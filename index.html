@@ -69,6 +69,22 @@
         </div>
     </div>
 
+    <div id="error-screen" class="hidden flex-1 flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full">
+        <div class="text-center">
+            <div class="inline-flex p-4 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-3xl mb-6">
+                <i class="fa-solid fa-circle-exclamation text-6xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-3">PDFの読み込みに失敗しました</h2>
+            <p class="text-slate-600 dark:text-slate-400 max-w-md mx-auto mb-8">
+                ファイルが破損しているか、対応していない形式の可能性があります。<br>別のPDFファイルをお試しください。
+            </p>
+            <button id="btn-retry-upload" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-2xl flex items-center gap-3 mx-auto transition">
+                <i class="fa-solid fa-rotate"></i>
+                <span>別のファイルを選択する</span>
+            </button>
+        </div>
+    </div>
+
     <div id="upload-screen" class="flex-1 flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full transition-opacity duration-300 overflow-y-auto">
         <div class="text-center mb-8">
             <div class="inline-flex p-3 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-2xl mb-4 shadow-sm">
@@ -176,6 +192,7 @@
         };
 
         const uploadScreen = document.getElementById('upload-screen');
+        const errorScreen = document.getElementById('error-screen');
         const viewerScreen = document.getElementById('viewer-screen');
         const presentationContainer = document.getElementById('presentation-container');
         const dropZone = document.getElementById('drop-zone');
@@ -194,6 +211,7 @@
         const fsPageIndicator = document.getElementById('fs-page-indicator');
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
+        const btnRetryUpload = document.getElementById('btn-retry-upload');
 
         const confirmModal = document.getElementById('confirm-modal');
         const confirmOk = document.getElementById('confirm-ok');
@@ -215,6 +233,8 @@
         btnBackToUpload.addEventListener('click', () => confirmModal.classList.remove('hidden'));
         confirmCancel.addEventListener('click', () => confirmModal.classList.add('hidden'));
         confirmOk.addEventListener('click', () => { confirmModal.classList.add('hidden'); location.reload(); });
+
+        btnRetryUpload.addEventListener('click', () => location.reload());
 
         btnSlideshow.addEventListener('click', startSlideshow);
 
@@ -273,11 +293,13 @@
                     document.getElementById('fs-total-pages').textContent = state.totalPages;
 
                     uploadScreen.classList.add('hidden');
+                    errorScreen.classList.add('hidden');
                     viewerScreen.classList.remove('hidden');
                     initViewer();
                 }).catch(() => {
                     hideLoading();
-                    alert('PDF読み込みに失敗しました');
+                    uploadScreen.classList.add('hidden');
+                    errorScreen.classList.remove('hidden');
                 });
             };
             reader.readAsArrayBuffer(file);
