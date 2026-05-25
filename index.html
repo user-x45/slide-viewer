@@ -233,6 +233,7 @@
             offsetY: 0,
             isPinching: false,
             lastPinchDist: 0,
+            lastPinchMid: { x: 0, y: 0 },
             isPanning: false,
             panStartX: 0,
             panStartY: 0,
@@ -305,6 +306,7 @@
                 zoomState.isPinching = true;
                 zoomState.isPanning = false;
                 zoomState.lastPinchDist = getTouchDist(e.touches);
+                zoomState.lastPinchMid = getTouchMidpoint(e.touches);
                 e.preventDefault();
             } else if (e.touches.length === 1 && zoomState.scale > 1) {
                 zoomState.isPanning = true;
@@ -323,7 +325,26 @@
                 const delta = dist / zoomState.lastPinchDist;
                 zoomState.lastPinchDist = dist;
                 const mid = getTouchMidpoint(e.touches);
-                zoomAt(delta, mid.x, mid.y);
+
+                // スケール変化分のオフセット補正（ピンチ中心基準）
+                const prevScale = zoomState.scale;
+                const newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, prevScale * delta));
+                if (newScale !== prevScale) {
+                    const ratio = newScale / prevScale;
+                    const vw = window.innerWidth, vh = window.innerHeight;
+                    const cx = mid.x - vw / 2;
+                    const cy = mid.y - vh / 2;
+                    zoomState.offsetX = cx + (zoomState.offsetX - cx) * ratio;
+                    zoomState.offsetY = cy + (zoomState.offsetY - cy) * ratio;
+                    zoomState.scale = newScale;
+                }
+
+                // 指の移動によるパン
+                zoomState.offsetX += mid.x - zoomState.lastPinchMid.x;
+                zoomState.offsetY += mid.y - zoomState.lastPinchMid.y;
+                zoomState.lastPinchMid = mid;
+
+                applyZoomTransform();
             } else if (zoomState.isPanning && e.touches.length === 1 && zoomState.scale > 1) {
                 e.preventDefault();
                 zoomState.offsetX = zoomState.panStartOffsetX + (e.touches[0].clientX - zoomState.panStartX);
