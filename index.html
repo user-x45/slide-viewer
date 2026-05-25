@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PDF Slide Viewer - ブラウザ上でPDFファイルを美しいスライド形式で表示。全画面スライドショー、キーボード操作、サムネイル一覧、ダークモード対応。">
+    <meta name="robots" content="noindex, nofollow">
     <title>PDF Slide Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -127,11 +129,11 @@
         </header>
 
         <div class="flex-1 flex min-h-0 bg-slate-100 dark:bg-slate-950 overflow-hidden">
-            <aside class="w-64 bg-slate-800 flex flex-col shrink-0 border-r border-slate-700 h-full">
-                <div class="p-3 border-b border-slate-700 shrink-0">
-                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">スライド一覧</span>
+            <aside class="w-64 bg-white dark:bg-slate-900 flex flex-col shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
+                <div class="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">スライド一覧</span>
                 </div>
-                <div id="thumbnail-list" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"></div>
+                <div id="thumbnail-list" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-white dark:bg-slate-900"></div>
             </aside>
 
             <main id="main-view-container" class="flex-1 overflow-auto p-8 flex items-center justify-center custom-scrollbar">
@@ -234,7 +236,7 @@
 
         document.addEventListener('keydown', e => {
             if (!state.pdfDoc) return;
-            if (['ArrowRight','ArrowDown',' '].includes(e.key)) {
+            if (['ArrowRight','ArrowDown',' ','Enter'].includes(e.key)) {
                 changePage(state.currentPage + 1, true);
             }
             else if (['ArrowLeft','ArrowUp','Backspace'].includes(e.key)) {
@@ -293,15 +295,15 @@
         function createThumbnailPlaceholder(pageNum) {
             const wrapper = document.createElement('div');
             wrapper.id = `thumb-wrapper-${pageNum}`;
-            wrapper.className = `cursor-pointer flex flex-col items-center p-2 rounded-lg transition-all border border-transparent hover:bg-slate-700/50 group ${pageNum === 1 ? 'bg-slate-700 border-indigo-500/50 ring-1 ring-indigo-500' : ''}`;
+            wrapper.className = `cursor-pointer flex flex-col items-center p-2 rounded-lg transition-all border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 group ${pageNum === 1 ? 'bg-slate-100 dark:bg-slate-800 border-indigo-500/50 ring-1 ring-indigo-500' : ''}`;
             wrapper.onclick = () => changePage(pageNum, false);
 
             const canvas = document.createElement('canvas');
             canvas.id = `thumb-canvas-${pageNum}`;
-            canvas.className = "w-full rounded bg-slate-900 border border-slate-700 shadow-md group-hover:scale-[1.02] transition-transform duration-200 block";
+            canvas.className = "w-full rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md group-hover:scale-[1.02] transition-transform duration-200 block";
             
             const label = document.createElement('span');
-            label.className = "text-xs mt-1.5 text-slate-400 font-medium group-hover:text-white transition-colors";
+            label.className = "text-xs mt-1.5 text-slate-500 dark:text-slate-400 font-medium group-hover:text-slate-900 dark:group-hover:text-white transition-colors";
             label.textContent = pageNum;
 
             wrapper.append(canvas, label);
@@ -360,11 +362,11 @@
                 const wrapper = document.getElementById(`thumb-wrapper-${i}`);
                 if (!wrapper) continue;
                 if (i === activePageNum) {
-                    wrapper.classList.add('bg-slate-700', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
+                    wrapper.classList.add('bg-slate-100', 'dark:bg-slate-800', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
                     wrapper.classList.remove('border-transparent');
                     wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 } else {
-                    wrapper.classList.remove('bg-slate-700', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
+                    wrapper.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
                     wrapper.classList.add('border-transparent');
                 }
             }
