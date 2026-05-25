@@ -232,9 +232,9 @@
 
         btnBackToUpload.addEventListener('click', () => confirmModal.classList.remove('hidden'));
         confirmCancel.addEventListener('click', () => confirmModal.classList.add('hidden'));
-        confirmOk.addEventListener('click', () => { confirmModal.classList.add('hidden'); location.reload(); });
+        confirmOk.addEventListener('click', resetToUpload);
 
-        btnRetryUpload.addEventListener('click', () => location.reload());
+        btnRetryUpload.addEventListener('click', resetToUpload);
 
         btnSlideshow.addEventListener('click', startSlideshow);
 
@@ -278,6 +278,11 @@
         });
 
         function handlePDFFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                uploadScreen.classList.add('hidden');
+                errorScreen.classList.remove('hidden');
+                return;
+            }
             showLoading('PDFを解析中...');
             state.pdfName = file.name;
             const reader = new FileReader();
@@ -303,6 +308,35 @@
                 });
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function resetToUpload() {
+            if (state.pdfDoc) {
+                state.pdfDoc.destroy();
+            }
+            state.pdfDoc = null;
+            state.currentPage = 1;
+            state.totalPages = 0;
+            state.pdfName = '';
+            state.isFullscreen = false;
+            state.renderedThumbnails.clear();
+
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+
+            pdfInput.value = '';
+            dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80');
+
+            presentationContainer.classList.add('hidden');
+            confirmModal.classList.add('hidden');
+            errorScreen.classList.add('hidden');
+            viewerScreen.classList.add('hidden');
+            uploadScreen.classList.remove('hidden');
+
+            thumbnailList.innerHTML = '';
+            mainCanvas.getContext('2d').clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            presentationCanvas.getContext('2d').clearRect(0, 0, presentationCanvas.width, presentationCanvas.height);
         }
 
         async function initViewer() {
