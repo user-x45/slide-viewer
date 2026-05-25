@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PDF Slide Viewer - ブラウザ上でPDFファイルを美しいスライド形式で表示。全画面スライドショー、キーボード操作、サムネイル一覧、ダークモード対応。">
     <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" type="image/png" href="favicon.png">
     <title>PDF Slide Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -162,8 +163,10 @@
         </div>
     </div>
 
-    <div id="presentation-container" class="hidden fixed inset-0 bg-black z-50 flex items-center justify-center select-none">
-        <canvas id="presentation-canvas" class="max-w-full max-h-full object-contain"></canvas>
+    <div id="presentation-container" class="hidden fixed inset-0 bg-black z-50 overflow-hidden select-none" style="touch-action: none;">
+        <div id="presentation-zoom-wrapper" style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;transform-origin:center center;">
+            <canvas id="presentation-canvas" style="display:block;"></canvas>
+        </div>
         
         <div id="fs-page-indicator" class="absolute bottom-6 left-6 bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-sm pointer-events-none">
             <span id="fs-current-page">1</span> / <span id="fs-total-pages">--</span> ページ
@@ -220,6 +223,139 @@
         let hideTimeout = null;
         let isInitialRender = false;
 
+        // --- Zoom / Pan state for slideshow ---
+        const zoomState = {
+            scale: 1,
+            minScale: 1,
+            maxScale: 4,
+            offsetX: 0,
+            offsetY: 0,
+            isPinching: false,
+            lastPinchDist: 0,
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+            panStartOffsetX: 0,
+            panStartOffsetY: 0,
+        };
+
+        const zoomWrapper = document.getElementById('presentation-zoom-wrapper');
+
+        function applyZoomTransform() {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const cw = presentationCanvas.offsetWidth * zoomState.scale;
+            const ch = presentationCanvas.offsetHeight * zoomState.scale;
+
+            const maxOffsetX = Math.max(0, (cw - vw) / 2);
+            const maxOffsetY = Math.max(0, (ch - vh) / 2);
+
+            zoomState.offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, zoomState.offsetX));
+            zoomState.offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, zoomState.offsetY));
+
+            zoomWrapper.style.transform =
+                `translate(${zoomState.offsetX}px, ${zoomState.offsetY}px) scale(${zoomState.scale})`;
+        }
+
+        function resetZoom() {
+            zoomState.scale = 1;
+            zoomState.offsetX = 0;
+            zoomState.offsetY = 0;
+            if (zoomWrapper) zoomWrapper.style.transform = '';
+        }
+
+        function zoomAt(delta, clientX, clientY) {
+            const prevScale = zoomState.scale;
+            const newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, prevScale * delta));
+            if (newScale === prevScale) return;
+
+            const ratio = newScale / prevScale;
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const cx = clientX - vw / 2;
+            const cy = clientY - vh / 2;
+
+            zoomState.offsetX = cx + (zoomState.offsetX - cx) * ratio;
+            zoomState.offsetY = cy + (zoomState.offsetY - cy) * ratio;
+            zoomState.scale = newScale;
+            applyZoomTransform();
+        }
+
+        // Ctrl + mouse wheel zoom
+        presentationContainer.addEventListener('wheel', e => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            zoomAt(delta, e.clientX, e.clientY);
+        }, { passive: false });
+
+        // Pinch zoom (touch)
+        function getTouchDist(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+        function getTouchMidpoint(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2,
+            };
+        }
+
+        presentationContainer.addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                zoomState.isPinching = true;
+                zoomState.isPanning = false;
+                zoomState.lastPinchDist = getTouchDist(e.touches);
+                e.preventDefault();
+            } else if (e.touches.length === 1 && zoomState.scale > 1) {
+                zoomState.isPanning = true;
+                zoomState.panStartX = e.touches[0].clientX;
+                zoomState.panStartY = e.touches[0].clientY;
+                zoomState.panStartOffsetX = zoomState.offsetX;
+                zoomState.panStartOffsetY = zoomState.offsetY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        presentationContainer.addEventListener('touchmove', e => {
+            if (zoomState.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                const dist = getTouchDist(e.touches);
+                const delta = dist / zoomState.lastPinchDist;
+                zoomState.lastPinchDist = dist;
+                const mid = getTouchMidpoint(e.touches);
+                zoomAt(delta, mid.x, mid.y);
+            } else if (zoomState.isPanning && e.touches.length === 1 && zoomState.scale > 1) {
+                e.preventDefault();
+                zoomState.offsetX = zoomState.panStartOffsetX + (e.touches[0].clientX - zoomState.panStartX);
+                zoomState.offsetY = zoomState.panStartOffsetY + (e.touches[0].clientY - zoomState.panStartY);
+                applyZoomTransform();
+            }
+        }, { passive: false });
+
+        presentationContainer.addEventListener('touchend', e => {
+            if (e.touches.length < 2) zoomState.isPinching = false;
+            if (e.touches.length === 0) zoomState.isPanning = false;
+        });
+
+        // Mouse drag pan when zoomed in
+        presentationContainer.addEventListener('mousedown', e => {
+            if (zoomState.scale <= 1) return;
+            zoomState.isPanning = true;
+            zoomState.panStartX = e.clientX;
+            zoomState.panStartY = e.clientY;
+            zoomState.panStartOffsetX = zoomState.offsetX;
+            zoomState.panStartOffsetY = zoomState.offsetY;
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', e => {
+            if (!zoomState.isPanning || !state.isFullscreen) return;
+            zoomState.offsetX = zoomState.panStartOffsetX + (e.clientX - zoomState.panStartX);
+            zoomState.offsetY = zoomState.panStartOffsetY + (e.clientY - zoomState.panStartY);
+            applyZoomTransform();
+        });
+        document.addEventListener('mouseup', () => { zoomState.isPanning = false; });
+
         dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-slate-50/80'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80'));
         dropZone.addEventListener('drop', e => {
@@ -239,7 +375,7 @@
         btnSlideshow.addEventListener('click', startSlideshow);
 
         presentationContainer.addEventListener('mousemove', () => {
-            showOverlay();
+            if (!zoomState.isPanning) showOverlay();
         });
 
         function showOverlay() {
@@ -252,7 +388,13 @@
             }, 1500);
         }
 
-        presentationContainer.addEventListener('click', () => changePage(state.currentPage + 1, false));
+        let _panMoved = false;
+        presentationContainer.addEventListener('mousedown', () => { _panMoved = false; }, true);
+        document.addEventListener('mousemove', () => { if (zoomState.isPanning) _panMoved = true; }, true);
+        presentationContainer.addEventListener('click', e => {
+            if (_panMoved) { _panMoved = false; return; }
+            changePage(state.currentPage + 1, false);
+        });
 
         document.addEventListener('keydown', e => {
             if (!state.pdfDoc) return;
@@ -432,6 +574,7 @@
             if (!state.pdfDoc || target < 1 || target > state.totalPages) return;
             state.currentPage = target;
             if (state.isFullscreen) {
+                resetZoom();
                 renderPresentationPage(target);
                 if (!fromKeyboard) {
                     showOverlay();
@@ -483,6 +626,7 @@
 
         function exitSlideshow() {
             state.isFullscreen = false;
+            resetZoom();
             if (document.fullscreenElement) document.exitFullscreen();
             presentationContainer.classList.add('hidden');
             renderMainPage(state.currentPage);
