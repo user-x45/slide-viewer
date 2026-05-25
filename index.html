@@ -26,7 +26,6 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-
         #fs-page-indicator {
             transition: all 0.3s ease;
             opacity: 0;
@@ -36,57 +35,59 @@
             opacity: 1;
             transform: translateY(0);
         }
+        #presentation-container {
+            cursor: none;
+        }
+        #presentation-container.show-cursor {
+            cursor: default;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen max-h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 h-screen max-h-screen flex flex-col overflow-hidden">
 
-    <!-- カスタム確認モーダル -->
     <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
-        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
             <div class="p-6">
                 <div class="flex items-center gap-3 mb-4">
                     <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl"></i>
-                    <h3 class="text-lg font-semibold text-slate-900">ファイルを閉じますか？</h3>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white">ファイルを閉じますか？</h3>
                 </div>
-                <p class="text-slate-600">
+                <p class="text-slate-600 dark:text-slate-400">
                     現在のPDFを閉じて、アップロード画面に戻ります。
                 </p>
             </div>
-            <div class="border-t border-slate-200 bg-slate-50 px-6 py-4 flex justify-end gap-3">
-                <button id="confirm-cancel" 
-                        class="px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition">
+            <div class="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-6 py-4 flex justify-end gap-3">
+                <button id="confirm-cancel" class="px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">
                     キャンセル
                 </button>
-                <button id="confirm-ok" 
-                        class="px-5 py-2.5 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition">
+                <button id="confirm-ok" class="px-5 py-2.5 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition">
                     閉じる
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- アップロード画面 -->
     <div id="upload-screen" class="flex-1 flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full transition-opacity duration-300 overflow-y-auto">
         <div class="text-center mb-8">
-            <div class="inline-flex p-3 bg-indigo-50 text-indigo-600 rounded-2xl mb-4 shadow-sm">
+            <div class="inline-flex p-3 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-2xl mb-4 shadow-sm">
                 <i class="fa-solid fa-file-pdf text-4xl"></i>
             </div>
-            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl mb-3">
+            <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl mb-3">
                 PDF Slide Viewer
             </h1>
-            <p class="text-base text-slate-600 max-w-md mx-auto">
+            <p class="text-base text-slate-600 dark:text-slate-400 max-w-md mx-auto">
                 PDFファイルをアップロードして、美しいスライド形式でプレゼンテーション。全画面スライドショー機能も搭載。
             </p>
         </div>
 
-        <div id="drop-zone" class="w-full bg-white border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer shadow-sm group">
+        <div id="drop-zone" class="w-full bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all cursor-pointer shadow-sm group">
             <input type="file" id="pdf-input" accept=".pdf" class="hidden" />
             <div class="flex flex-col items-center">
-                <i class="fa-solid fa-cloud-arrow-up text-5xl text-slate-400 group-hover:text-indigo-500 transition-colors mb-4"></i>
-                <p class="text-base font-semibold text-slate-700 mb-1 group-hover:text-indigo-600 transition-colors">
+                <i class="fa-solid fa-cloud-arrow-up text-5xl text-slate-400 dark:text-slate-600 group-hover:text-indigo-500 transition-colors mb-4"></i>
+                <p class="text-base font-semibold text-slate-700 dark:text-slate-300 mb-1 group-hover:text-indigo-600 transition-colors">
                     PDFファイルをドラッグ＆ドロップ
                 </p>
-                <p class="text-sm text-slate-500 mb-5">
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-5">
                     またはファイルを選択してください
                 </p>
                 <button type="button" onclick="document.getElementById('pdf-input').click()" class="px-5 py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-lg shadow hover:bg-indigo-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -95,27 +96,26 @@
             </div>
         </div>
 
-        <p class="text-xs text-slate-400 mt-6 flex items-center">
+        <p class="text-xs text-slate-400 dark:text-slate-500 mt-6 flex items-center">
             <i class="fa-solid fa-shield-halved mr-1"></i>
             PDFファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません。
         </p>
     </div>
 
-    <!-- ビューア画面 -->
     <div id="viewer-screen" class="hidden flex-1 flex flex-col h-full min-h-0 overflow-hidden">
-        <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 shrink-0 shadow-sm">
+        <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between z-10 shrink-0 shadow-sm">
             <div class="flex items-center space-x-4 max-w-[60%]">
-                <button id="btn-back-to-upload" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" title="ファイルを閉じる">
+                <button id="btn-back-to-upload" class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="ファイルを閉じる">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
                 <div>
-                    <h2 id="pdf-title" class="text-lg font-bold text-slate-900 truncate">PDF Title</h2>
-                    <p id="pdf-subtitle" class="text-xs text-slate-500">読み込み完了</p>
+                    <h2 id="pdf-title" class="text-lg font-bold text-slate-900 dark:text-white truncate">PDF Title</h2>
+                    <p id="pdf-subtitle" class="text-xs text-slate-500 dark:text-slate-400">読み込み完了</p>
                 </div>
             </div>
 
             <div class="flex items-center space-x-3">
-                <span class="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1.5 rounded-lg">
+                <span class="text-sm font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
                     <span id="current-page-num">1</span> / <span id="total-pages-num">--</span> ページ
                 </span>
 
@@ -126,7 +126,7 @@
             </div>
         </header>
 
-        <div class="flex-1 flex min-h-0 bg-slate-100 overflow-hidden">
+        <div class="flex-1 flex min-h-0 bg-slate-100 dark:bg-slate-950 overflow-hidden">
             <aside class="w-64 bg-slate-800 flex flex-col shrink-0 border-r border-slate-700 h-full">
                 <div class="p-3 border-b border-slate-700 shrink-0">
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">スライド一覧</span>
@@ -136,7 +136,7 @@
 
             <main id="main-view-container" class="flex-1 overflow-auto p-8 flex items-center justify-center custom-scrollbar">
                 <div class="max-w-full max-h-full flex items-center justify-center">
-                    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden relative transition-transform duration-200">
+                    <div class="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative transition-transform duration-200">
                         <canvas id="main-canvas" class="max-w-full max-h-full block object-contain"></canvas>
                     </div>
                 </div>
@@ -144,8 +144,7 @@
         </div>
     </div>
 
-    <!-- スライドショー画面 -->
-    <div id="presentation-container" class="hidden fixed inset-0 bg-black z-50 flex items-center justify-center select-none cursor-pointer">
+    <div id="presentation-container" class="hidden fixed inset-0 bg-black z-50 flex items-center justify-center select-none">
         <canvas id="presentation-canvas" class="max-w-full max-h-full object-contain"></canvas>
         
         <div id="fs-page-indicator" class="absolute bottom-6 left-6 bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-sm pointer-events-none">
@@ -161,6 +160,10 @@
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
         const state = {
             pdfDoc: null,
             currentPage: 1,
@@ -170,7 +173,6 @@
             renderedThumbnails: new Set()
         };
 
-        // DOM要素
         const uploadScreen = document.getElementById('upload-screen');
         const viewerScreen = document.getElementById('viewer-screen');
         const presentationContainer = document.getElementById('presentation-container');
@@ -191,15 +193,13 @@
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
 
-        // 確認モーダル
         const confirmModal = document.getElementById('confirm-modal');
         const confirmOk = document.getElementById('confirm-ok');
         const confirmCancel = document.getElementById('confirm-cancel');
 
-        let hidePageIndicatorTimeout = null;
+        let hideTimeout = null;
         let isInitialRender = false;
 
-        // ====================== イベント ======================
         dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-slate-50/80'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80'));
         dropZone.addEventListener('drop', e => {
@@ -210,28 +210,36 @@
 
         pdfInput.addEventListener('change', e => e.target.files[0] && handlePDFFile(e.target.files[0]));
 
-        btnBackToUpload.addEventListener('click', () => {
-            confirmModal.classList.remove('hidden');
-        });
-
-        confirmCancel.addEventListener('click', () => {
-            confirmModal.classList.add('hidden');
-        });
-
-        confirmOk.addEventListener('click', () => {
-            confirmModal.classList.add('hidden');
-            location.reload();
-        });
+        btnBackToUpload.addEventListener('click', () => confirmModal.classList.remove('hidden'));
+        confirmCancel.addEventListener('click', () => confirmModal.classList.add('hidden'));
+        confirmOk.addEventListener('click', () => { confirmModal.classList.add('hidden'); location.reload(); });
 
         btnSlideshow.addEventListener('click', startSlideshow);
 
-        presentationContainer.addEventListener('click', () => changePage(state.currentPage + 1));
-        presentationContainer.addEventListener('mousemove', showPageIndicator);
+        presentationContainer.addEventListener('mousemove', () => {
+            showOverlay();
+        });
+
+        function showOverlay() {
+            fsPageIndicator.classList.add('show');
+            presentationContainer.classList.add('show-cursor');
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                fsPageIndicator.classList.remove('show');
+                presentationContainer.classList.remove('show-cursor');
+            }, 1500);
+        }
+
+        presentationContainer.addEventListener('click', () => changePage(state.currentPage + 1, false));
 
         document.addEventListener('keydown', e => {
             if (!state.pdfDoc) return;
-            if (['ArrowRight','ArrowDown',' '].includes(e.key)) changePage(state.currentPage + 1);
-            else if (['ArrowLeft','ArrowUp','Backspace'].includes(e.key)) changePage(state.currentPage - 1);
+            if (['ArrowRight','ArrowDown',' '].includes(e.key)) {
+                changePage(state.currentPage + 1, true);
+            }
+            else if (['ArrowLeft','ArrowUp','Backspace'].includes(e.key)) {
+                changePage(state.currentPage - 1, true);
+            }
             else if (e.key === 'Escape') {
                 if (state.isFullscreen) exitSlideshow();
                 else if (!confirmModal.classList.contains('hidden')) confirmModal.classList.add('hidden');
@@ -246,12 +254,6 @@
                 exitSlideshow();
             }
         });
-
-        function showPageIndicator() {
-            fsPageIndicator.classList.add('show');
-            clearTimeout(hidePageIndicatorTimeout);
-            hidePageIndicatorTimeout = setTimeout(() => fsPageIndicator.classList.remove('show'), 1500);
-        }
 
         function handlePDFFile(file) {
             showLoading('PDFを解析中...');
@@ -292,7 +294,7 @@
             const wrapper = document.createElement('div');
             wrapper.id = `thumb-wrapper-${pageNum}`;
             wrapper.className = `cursor-pointer flex flex-col items-center p-2 rounded-lg transition-all border border-transparent hover:bg-slate-700/50 group ${pageNum === 1 ? 'bg-slate-700 border-indigo-500/50 ring-1 ring-indigo-500' : ''}`;
-            wrapper.onclick = () => changePage(pageNum);
+            wrapper.onclick = () => changePage(pageNum, false);
 
             const canvas = document.createElement('canvas');
             canvas.id = `thumb-canvas-${pageNum}`;
@@ -368,12 +370,14 @@
             }
         }
 
-        function changePage(target) {
+        function changePage(target, fromKeyboard = false) {
             if (!state.pdfDoc || target < 1 || target > state.totalPages) return;
             state.currentPage = target;
             if (state.isFullscreen) {
                 renderPresentationPage(target);
-                showPageIndicator();
+                if (!fromKeyboard) {
+                    showOverlay();
+                }
             } else {
                 renderMainPage(target);
             }
