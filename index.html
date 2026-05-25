@@ -6,12 +6,12 @@
     <title>PDF Slide Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <style>
         body {
             font-family: 'Inter', 'Noto Sans JP', sans-serif;
         }
-        /* Custom scrollbar for preview list */
         .custom-scrollbar::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -26,42 +26,67 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        /* Hide full screen navigation controls in normal mode */
-        .fullscreen-controls {
-            display: none;
+
+        #fs-page-indicator {
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
         }
-        :fullscreen .fullscreen-controls {
-            display: flex;
+        #fs-page-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
         }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen max-h-screen flex flex-col overflow-hidden">
 
-    <div id="upload-screen" class="flex-1 flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full transition-opacity duration-300 overflow-y-auto">
-        <div class="text-center mb-10">
-            <div class="inline-flex p-4 bg-indigo-50 text-indigo-600 rounded-2xl mb-4 shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0V18m0 0v1.5m0-1.5h7.5m0 0V18m0 0v1.5m-7.5-1.5h7.5" />
-                </svg>
+    <!-- カスタム確認モーダル -->
+    <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-2xl"></i>
+                    <h3 class="text-lg font-semibold text-slate-900">ファイルを閉じますか？</h3>
+                </div>
+                <p class="text-slate-600">
+                    現在のPDFを閉じて、アップロード画面に戻ります。
+                </p>
             </div>
-            <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight sm:text-5xl mb-3">
+            <div class="border-t border-slate-200 bg-slate-50 px-6 py-4 flex justify-end gap-3">
+                <button id="confirm-cancel" 
+                        class="px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl transition">
+                    キャンセル
+                </button>
+                <button id="confirm-ok" 
+                        class="px-5 py-2.5 text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- アップロード画面 -->
+    <div id="upload-screen" class="flex-1 flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full transition-opacity duration-300 overflow-y-auto">
+        <div class="text-center mb-8">
+            <div class="inline-flex p-3 bg-indigo-50 text-indigo-600 rounded-2xl mb-4 shadow-sm">
+                <i class="fa-solid fa-file-pdf text-4xl"></i>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-900 tracking-tight sm:text-4xl mb-3">
                 PDF Slide Viewer
             </h1>
-            <p class="text-lg text-slate-600 max-w-lg mx-auto">
+            <p class="text-base text-slate-600 max-w-md mx-auto">
                 PDFファイルをアップロードして、美しいスライド形式でプレゼンテーション。全画面スライドショー機能も搭載。
             </p>
         </div>
 
-        <div id="drop-zone" class="w-full bg-white border-2 border-dashed border-slate-300 rounded-2xl p-12 text-center hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer shadow-sm group">
+        <div id="drop-zone" class="w-full bg-white border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer shadow-sm group">
             <input type="file" id="pdf-input" accept=".pdf" class="hidden" />
             <div class="flex flex-col items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-16 h-16 text-slate-400 group-hover:text-indigo-500 transition-colors mb-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                </svg>
-                <p class="text-lg font-semibold text-slate-700 mb-1 group-hover:text-indigo-600 transition-colors">
+                <i class="fa-solid fa-cloud-arrow-up text-5xl text-slate-400 group-hover:text-indigo-500 transition-colors mb-4"></i>
+                <p class="text-base font-semibold text-slate-700 mb-1 group-hover:text-indigo-600 transition-colors">
                     PDFファイルをドラッグ＆ドロップ
                 </p>
-                <p class="text-sm text-slate-500 mb-6">
+                <p class="text-sm text-slate-500 mb-5">
                     またはファイルを選択してください
                 </p>
                 <button type="button" onclick="document.getElementById('pdf-input').click()" class="px-5 py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-lg shadow hover:bg-indigo-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
@@ -71,21 +96,17 @@
         </div>
 
         <p class="text-xs text-slate-400 mt-6 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 mr-1">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 111.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-            </svg>
+            <i class="fa-solid fa-shield-halved mr-1"></i>
             PDFファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません。
         </p>
     </div>
 
+    <!-- ビューア画面 -->
     <div id="viewer-screen" class="hidden flex-1 flex flex-col h-full min-h-0 overflow-hidden">
-        
         <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between z-10 shrink-0 shadow-sm">
             <div class="flex items-center space-x-4 max-w-[60%]">
                 <button id="btn-back-to-upload" class="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors" title="ファイルを閉じる">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                    </svg>
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
                 <div>
                     <h2 id="pdf-title" class="text-lg font-bold text-slate-900 truncate">PDF Title</h2>
@@ -99,9 +120,7 @@
                 </span>
 
                 <button id="btn-slideshow" class="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z" />
-                    </svg>
+                    <i class="fa-solid fa-play text-sm"></i>
                     <span>スライドショー</span>
                 </button>
             </div>
@@ -112,54 +131,25 @@
                 <div class="p-3 border-b border-slate-700 shrink-0">
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">スライド一覧</span>
                 </div>
-                <div id="thumbnail-list" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-                    </div>
+                <div id="thumbnail-list" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar"></div>
             </aside>
 
             <main id="main-view-container" class="flex-1 overflow-auto p-8 flex items-center justify-center custom-scrollbar">
                 <div class="max-w-full max-h-full flex items-center justify-center">
                     <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden relative transition-transform duration-200">
                         <canvas id="main-canvas" class="max-w-full max-h-full block object-contain"></canvas>
-                        
-                        <button id="btn-prev-page" class="absolute left-4 top-1/2 -translate-y-1/2 bg-slate-900/40 hover:bg-slate-900/70 text-white p-3 rounded-full opacity-0 hover:opacity-100 transition-opacity focus:outline-none" title="前のページ">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                            </svg>
-                        </button>
-                        <button id="btn-next-page" class="absolute right-4 top-1/2 -translate-y-1/2 bg-slate-900/40 hover:bg-slate-900/70 text-white p-3 rounded-full opacity-0 hover:opacity-100 transition-opacity focus:outline-none" title="次のページ">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
             </main>
         </div>
     </div>
 
+    <!-- スライドショー画面 -->
     <div id="presentation-container" class="hidden fixed inset-0 bg-black z-50 flex items-center justify-center select-none cursor-pointer">
         <canvas id="presentation-canvas" class="max-w-full max-h-full object-contain"></canvas>
         
-        <div class="fullscreen-controls absolute bottom-6 left-6 bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-sm pointer-events-none">
+        <div id="fs-page-indicator" class="absolute bottom-6 left-6 bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium backdrop-blur-sm pointer-events-none">
             <span id="fs-current-page">1</span> / <span id="fs-total-pages">--</span> ページ
-        </div>
-
-        <button id="btn-close-presentation" class="fullscreen-controls absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors z-50" title="スライドショーを終了 (Esc)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-        </button>
-
-        <div id="guide-overlay" class="absolute inset-0 flex items-center justify-center bg-black/60 transition-opacity duration-500 pointer-events-none">
-            <div class="text-center text-white p-8 rounded-xl max-w-md">
-                <p class="text-xl font-bold mb-4">スライドショー開始</p>
-                <div class="space-y-2 text-sm text-slate-300 text-left">
-                    <p class="flex items-center"><span class="bg-white/20 px-2 py-0.5 rounded text-xs mr-2 font-mono">クリック</span> または <span class="bg-white/20 px-2 py-0.5 rounded text-xs mx-1 font-mono">Space</span> / <span class="bg-white/20 px-2 py-0.5 rounded text-xs mx-1 font-mono">→</span> / <span class="bg-white/20 px-2 py-0.5 rounded text-xs mx-1 font-mono">↓</span> : 次へ</p>
-                    <p class="flex items-center"><span class="bg-white/20 px-2 py-0.5 rounded text-xs mr-2 font-mono">Backspace</span> または <span class="bg-white/20 px-2 py-0.5 rounded text-xs mx-1 font-mono">←</span> / <span class="bg-white/20 px-2 py-0.5 rounded text-xs mx-1 font-mono">↑</span> : 戻る</p>
-                    <p class="flex items-center"><span class="bg-white/20 px-2 py-0.5 rounded text-xs mr-2 font-mono">Esc</span> : スライドショーを終了</p>
-                </div>
-                <p class="text-xs text-indigo-400 mt-6 animate-pulse">画面をクリックするとこの案内は消え、次に進みます</p>
-            </div>
         </div>
     </div>
 
@@ -169,20 +159,18 @@
     </div>
 
     <script>
-        // PDF.jsのワーカー設定
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-        // アプリケーションの状態管理
         const state = {
             pdfDoc: null,
             currentPage: 1,
             totalPages: 0,
             pdfName: '',
             isFullscreen: false,
-            renderedThumbnails: new Set() // 描画完了したサムネイルを追跡
+            renderedThumbnails: new Set()
         };
 
-        // DOM要素の参照
+        // DOM要素
         const uploadScreen = document.getElementById('upload-screen');
         const viewerScreen = document.getElementById('viewer-screen');
         const presentationContainer = document.getElementById('presentation-container');
@@ -197,497 +185,253 @@
         const mainViewContainer = document.getElementById('main-view-container');
         const presentationCanvas = document.getElementById('presentation-canvas');
         
-        // ボタン類
         const btnBackToUpload = document.getElementById('btn-back-to-upload');
         const btnSlideshow = document.getElementById('btn-slideshow');
-        const btnPrevPage = document.getElementById('btn-prev-page');
-        const btnNextPage = document.getElementById('btn-next-page');
-        const btnClosePresentation = document.getElementById('btn-close-presentation');
+        const fsPageIndicator = document.getElementById('fs-page-indicator');
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadingText = document.getElementById('loading-text');
-        const guideOverlay = document.getElementById('guide-overlay');
 
-        // ==========================================
-        //  イベントリスナーの設定
-        // ==========================================
+        // 確認モーダル
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmOk = document.getElementById('confirm-ok');
+        const confirmCancel = document.getElementById('confirm-cancel');
 
-        // ドラッグ&ドロップイベント
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-indigo-500', 'bg-slate-50/80');
-        });
+        let hidePageIndicatorTimeout = null;
+        let isInitialRender = false;
 
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80');
-        });
-
-        dropZone.addEventListener('drop', (e) => {
+        // ====================== イベント ======================
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-slate-50/80'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80'));
+        dropZone.addEventListener('drop', e => {
             e.preventDefault();
             dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80');
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'application/pdf') {
-                handlePDFFile(files[0]);
-            } else {
-                showToast('PDFファイルのみサポートされています。', 'error');
-            }
+            if (e.dataTransfer.files[0]) handlePDFFile(e.dataTransfer.files[0]);
         });
 
-        // ファイル入力
-        pdfInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                handlePDFFile(e.target.files[0]);
-            }
-        });
+        pdfInput.addEventListener('change', e => e.target.files[0] && handlePDFFile(e.target.files[0]));
 
-        // 戻るボタン
         btnBackToUpload.addEventListener('click', () => {
-            // 状態を初期化してアップロード画面に戻る
-            state.pdfDoc = null;
-            state.currentPage = 1;
-            state.totalPages = 0;
-            state.pdfName = '';
-            state.renderedThumbnails.clear();
-            thumbnailList.innerHTML = '';
-            pdfInput.value = '';
-
-            viewerScreen.classList.add('hidden');
-            uploadScreen.classList.remove('hidden');
+            confirmModal.classList.remove('hidden');
         });
 
-        // ページ送りボタン
-        btnPrevPage.addEventListener('click', (e) => {
-            e.stopPropagation();
-            changePage(state.currentPage - 1);
+        confirmCancel.addEventListener('click', () => {
+            confirmModal.classList.add('hidden');
         });
 
-        btnNextPage.addEventListener('click', (e) => {
-            e.stopPropagation();
-            changePage(state.currentPage + 1);
+        confirmOk.addEventListener('click', () => {
+            confirmModal.classList.add('hidden');
+            location.reload();
         });
 
-        // スライドショー開始
-        btnSlideshow.addEventListener('click', () => {
-            startSlideshow();
-        });
+        btnSlideshow.addEventListener('click', startSlideshow);
 
-        // スライドショー終了ボタン
-        btnClosePresentation.addEventListener('click', (e) => {
-            e.stopPropagation();
-            stopSlideshow();
-        });
+        presentationContainer.addEventListener('click', () => changePage(state.currentPage + 1));
+        presentationContainer.addEventListener('mousemove', showPageIndicator);
 
-        // フルスクリーン全体のクリック（次のスライドへ）
-        presentationContainer.addEventListener('click', (e) => {
-            // コントロールボタンなどの上をクリックされた場合は何もしない
-            if (e.target.closest('#btn-close-presentation')) return;
-            
-            // 操作方法オーバーレイが表示されている場合は消すだけで次のスライドへは行かない
-            if (!guideOverlay.classList.contains('hidden')) {
-                hideGuide();
-                return;
-            }
-
-            changePage(state.currentPage + 1);
-        });
-
-        // キーボード操作
-        document.addEventListener('keydown', (e) => {
-            const key = e.key;
-            
-            // スライドショー中またはメインビュー表示中
-            if (state.pdfDoc) {
-                if (key === 'ArrowRight' || key === 'ArrowDown' || key === ' ') {
-                    e.preventDefault();
-                    
-                    if (state.isFullscreen && !guideOverlay.classList.contains('hidden')) {
-                        hideGuide();
-                        return;
-                    }
-                    changePage(state.currentPage + 1);
-                } else if (key === 'ArrowLeft' || key === 'ArrowUp' || key === 'Backspace') {
-                    e.preventDefault();
-                    
-                    if (state.isFullscreen && !guideOverlay.classList.contains('hidden')) {
-                        hideGuide();
-                        return;
-                    }
-                    changePage(state.currentPage - 1);
-                }
-            }
-        });
-
-        // ウィンドウのリサイズ対応（描画品質の最適化）
-        let resizeTimeout;
-        window.addEventListener('resize', () => {
+        document.addEventListener('keydown', e => {
             if (!state.pdfDoc) return;
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => {
-                if (state.isFullscreen) {
-                    renderPresentationPage(state.currentPage);
-                } else {
-                    renderMainPage(state.currentPage);
-                }
-            }, 150);
-        });
-
-        // フルスクリーン状態の変更検知 (Escキー対策など)
-        document.addEventListener('fullscreenchange', () => {
-            if (!document.fullscreenElement) {
-                // フルスクリーン終了時
-                state.isFullscreen = false;
-                presentationContainer.classList.add('hidden');
-                // メイン画面の再描画
-                renderMainPage(state.currentPage);
+            if (['ArrowRight','ArrowDown',' '].includes(e.key)) changePage(state.currentPage + 1);
+            else if (['ArrowLeft','ArrowUp','Backspace'].includes(e.key)) changePage(state.currentPage - 1);
+            else if (e.key === 'Escape') {
+                if (state.isFullscreen) exitSlideshow();
+                else if (!confirmModal.classList.contains('hidden')) confirmModal.classList.add('hidden');
             }
         });
 
-        // ==========================================
-        //  PDF処理メイン
-        // ==========================================
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement && isInitialRender) {
+                isInitialRender = false;
+                renderPresentationPage(state.currentPage);
+            } else if (!document.fullscreenElement && state.isFullscreen) {
+                exitSlideshow();
+            }
+        });
 
-        // PDFファイルの読み込み
+        function showPageIndicator() {
+            fsPageIndicator.classList.add('show');
+            clearTimeout(hidePageIndicatorTimeout);
+            hidePageIndicatorTimeout = setTimeout(() => fsPageIndicator.classList.remove('show'), 1500);
+        }
+
         function handlePDFFile(file) {
             showLoading('PDFを解析中...');
             state.pdfName = file.name;
-            
-            const fileReader = new FileReader();
-            fileReader.onload = function() {
-                const typedarray = new Uint8Array(this.result);
-                
-                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                pdfjsLib.getDocument(new Uint8Array(reader.result)).promise.then(pdf => {
                     state.pdfDoc = pdf;
                     state.totalPages = pdf.numPages;
                     state.currentPage = 1;
 
-                    // UIの更新
                     pdfTitle.textContent = state.pdfName;
                     pdfSubtitle.textContent = `総ページ数: ${state.totalPages} ページ`;
                     totalPagesNum.textContent = state.totalPages;
                     document.getElementById('fs-total-pages').textContent = state.totalPages;
 
-                    // 画面の切り替え
                     uploadScreen.classList.add('hidden');
                     viewerScreen.classList.remove('hidden');
-
-                    // ページの初期描画
                     initViewer();
-
-                }).catch(function(error) {
-                    console.error('PDF読み込みエラー:', error);
+                }).catch(() => {
                     hideLoading();
-                    showToast('PDFファイルのロードに失敗しました。ファイルが壊れている可能性があります。', 'error');
+                    alert('PDF読み込みに失敗しました');
                 });
             };
-            fileReader.readAsArrayBuffer(file);
+            reader.readAsArrayBuffer(file);
         }
 
-        // ビューアの初期化
         async function initViewer() {
             showLoading('スライド一覧を生成中...');
-            
-            // 1. サムネイルリストを並列または順次生成
             thumbnailList.innerHTML = '';
-            for (let i = 1; i <= state.totalPages; i++) {
-                createThumbnailPlaceholder(i);
-            }
-
-            // メインページの描画
+            for (let i = 1; i <= state.totalPages; i++) createThumbnailPlaceholder(i);
             await renderMainPage(1);
-            
-            // サムネイルの実際のレンダリング（非同期で順次行う）
             renderThumbnailsSequentially();
-            
             hideLoading();
         }
 
-        // サムネイルのプレースホルダーを生成
         function createThumbnailPlaceholder(pageNum) {
             const wrapper = document.createElement('div');
             wrapper.id = `thumb-wrapper-${pageNum}`;
             wrapper.className = `cursor-pointer flex flex-col items-center p-2 rounded-lg transition-all border border-transparent hover:bg-slate-700/50 group ${pageNum === 1 ? 'bg-slate-700 border-indigo-500/50 ring-1 ring-indigo-500' : ''}`;
             wrapper.onclick = () => changePage(pageNum);
 
-            // プレースホルダーキャンバス
             const canvas = document.createElement('canvas');
             canvas.id = `thumb-canvas-${pageNum}`;
             canvas.className = "w-full rounded bg-slate-900 border border-slate-700 shadow-md group-hover:scale-[1.02] transition-transform duration-200 block";
             
-            // ページ番号ラベル
             const label = document.createElement('span');
             label.className = "text-xs mt-1.5 text-slate-400 font-medium group-hover:text-white transition-colors";
-            label.textContent = `${pageNum}`;
+            label.textContent = pageNum;
 
-            wrapper.appendChild(canvas);
-            wrapper.appendChild(label);
+            wrapper.append(canvas, label);
             thumbnailList.appendChild(wrapper);
         }
 
-        // サムネイルを背景で順次描画していく
         async function renderThumbnailsSequentially() {
             for (let i = 1; i <= state.totalPages; i++) {
-                if (state.renderedThumbnails.has(i) || !state.pdfDoc) continue;
-                await renderThumbnail(i);
+                if (!state.renderedThumbnails.has(i)) await renderThumbnail(i);
             }
         }
 
-        // サムネイル個別の描画
         async function renderThumbnail(pageNum) {
             try {
                 const page = await state.pdfDoc.getPage(pageNum);
                 const canvas = document.getElementById(`thumb-canvas-${pageNum}`);
-                if (!canvas) return; // 既に画面がリセットされている場合
-
+                if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                
-                // サムネイル用に小さめの比率を設定
                 const viewport = page.getViewport({ scale: 0.25 });
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
-
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-
-                await page.render(renderContext).promise;
+                await page.render({canvasContext: ctx, viewport}).promise;
                 state.renderedThumbnails.add(pageNum);
-            } catch (err) {
-                console.error(`サムネイル描画エラー (Page ${pageNum}):`, err);
-            }
+            } catch (_) {}
         }
 
-        // メインキャンバスに高画質でページを描画
         let currentRenderTask = null;
         async function renderMainPage(pageNum) {
             if (!state.pdfDoc) return;
-
-            // 既存のレンダリングタスクがあればキャンセル
-            if (currentRenderTask) {
-                currentRenderTask.cancel();
-            }
-
+            if (currentRenderTask) currentRenderTask.cancel();
             try {
                 const page = await state.pdfDoc.getPage(pageNum);
                 const ctx = mainCanvas.getContext('2d');
-
-                // コンテナの幅に合わせた最適なスケールを算出
-                const containerWidth = mainViewContainer.clientWidth - 64; // 余白を引く (p-8に合せる)
-                const containerHeight = mainViewContainer.clientHeight - 64;
-
-                const unscaledViewport = page.getViewport({ scale: 1 });
-                const scaleX = containerWidth / unscaledViewport.width;
-                const scaleY = containerHeight / unscaledViewport.height;
-                
-                // 縦横比を保ちながらコンテナに収まる最適なスケール
-                // ぼやけるのを防止するためデバイスピクセル比（DPR）も考慮
+                const containerW = mainViewContainer.clientWidth - 64;
+                const containerH = mainViewContainer.clientHeight - 64;
+                const unscaled = page.getViewport({scale: 1});
                 const dpr = window.devicePixelRatio || 1;
-                const fitScale = Math.min(scaleX, scaleY);
-                const optimizedScale = fitScale * dpr;
+                const scale = Math.min(containerW / unscaled.width, containerH / unscaled.height) * dpr;
+                const viewport = page.getViewport({scale});
 
-                const viewport = page.getViewport({ scale: optimizedScale });
-                
-                // キャンバスのサイズ設定 (物理ピクセル)
                 mainCanvas.width = viewport.width;
                 mainCanvas.height = viewport.height;
-                
-                // 表示用スタイル（CSSでの拡大縮小）でぼやけをなくす
                 mainCanvas.style.width = `${viewport.width / dpr}px`;
                 mainCanvas.style.height = `${viewport.height / dpr}px`;
 
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-
-                currentRenderTask = page.render(renderContext);
+                currentRenderTask = page.render({canvasContext: ctx, viewport});
                 await currentRenderTask.promise;
 
-                // ページ表示完了後
                 currentPageNum.textContent = pageNum;
                 updateThumbnailActiveState(pageNum);
-                
-                // ページ移動時のナビゲーションボタン無効化制御
-                btnPrevPage.disabled = (pageNum === 1);
-                btnNextPage.disabled = (pageNum === state.totalPages);
-                btnPrevPage.style.opacity = (pageNum === 1) ? '0' : '';
-                btnNextPage.style.opacity = (pageNum === state.totalPages) ? '0' : '';
-
-            } catch (error) {
-                if (error.name === 'RenderingCancelledException') {
-                    // キャンセルされた場合は正常動作
-                    return;
-                }
-                console.error('メインページ描画エラー:', error);
-            }
+            } catch (_) {}
         }
 
-        // プレビュー側のアクティブ状態を更新、かつスクロールして画面に収める
         function updateThumbnailActiveState(activePageNum) {
             for (let i = 1; i <= state.totalPages; i++) {
                 const wrapper = document.getElementById(`thumb-wrapper-${i}`);
-                if (wrapper) {
-                    if (i === activePageNum) {
-                        wrapper.classList.add('bg-slate-700', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
-                        wrapper.classList.remove('border-transparent');
-                        
-                        // アクティブなサムネイルまでスマートにスクロール
-                        wrapper.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'nearest'
-                        });
-                    } else {
-                        wrapper.classList.remove('bg-slate-700', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
-                        wrapper.classList.add('border-transparent');
-                    }
+                if (!wrapper) continue;
+                if (i === activePageNum) {
+                    wrapper.classList.add('bg-slate-700', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
+                    wrapper.classList.remove('border-transparent');
+                    wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    wrapper.classList.remove('bg-slate-700', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
+                    wrapper.classList.add('border-transparent');
                 }
             }
         }
 
-        // ページ移動
-        function changePage(targetPageNum) {
-            if (!state.pdfDoc) return;
-            if (targetPageNum < 1 || targetPageNum > state.totalPages) return;
-
-            state.currentPage = targetPageNum;
-
+        function changePage(target) {
+            if (!state.pdfDoc || target < 1 || target > state.totalPages) return;
+            state.currentPage = target;
             if (state.isFullscreen) {
-                renderPresentationPage(targetPageNum);
+                renderPresentationPage(target);
+                showPageIndicator();
             } else {
-                renderMainPage(targetPageNum);
+                renderMainPage(target);
             }
         }
-
-        // ==========================================
-        //  全画面スライドショー（プレゼンテーション）
-        // ==========================================
 
         let presentationRenderTask = null;
         async function renderPresentationPage(pageNum) {
             if (!state.pdfDoc) return;
-
-            if (presentationRenderTask) {
-                presentationRenderTask.cancel();
-            }
-
+            if (presentationRenderTask) presentationRenderTask.cancel();
             try {
                 const page = await state.pdfDoc.getPage(pageNum);
                 const ctx = presentationCanvas.getContext('2d');
-
-                // 画面全体の解像度（フルスクリーンサイズ）
                 const dpr = window.devicePixelRatio || 1;
-                const screenWidth = window.innerWidth;
-                const screenHeight = window.innerHeight;
-
-                const unscaledViewport = page.getViewport({ scale: 1 });
-                const scaleX = screenWidth / unscaledViewport.width;
-                const scaleY = screenHeight / unscaledViewport.height;
-
-                // 黒帯部分をカバーするために画面内に綺麗に収める縮尺
-                const fitScale = Math.min(scaleX, scaleY);
-                const optimizedScale = fitScale * dpr;
-
-                const viewport = page.getViewport({ scale: optimizedScale });
+                const vw = window.innerWidth, vh = window.innerHeight;
+                const unscaled = page.getViewport({scale: 1});
+                const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr;
+                const viewport = page.getViewport({scale});
 
                 presentationCanvas.width = viewport.width;
                 presentationCanvas.height = viewport.height;
                 presentationCanvas.style.width = `${viewport.width / dpr}px`;
                 presentationCanvas.style.height = `${viewport.height / dpr}px`;
 
-                const renderContext = {
-                    canvasContext: ctx,
-                    viewport: viewport
-                };
-
-                presentationRenderTask = page.render(renderContext);
+                presentationRenderTask = page.render({canvasContext: ctx, viewport});
                 await presentationRenderTask.promise;
-
-                // インジケータ更新
                 document.getElementById('fs-current-page').textContent = pageNum;
-
-            } catch (error) {
-                if (error.name === 'RenderingCancelledException') return;
-                console.error('全画面プレゼン描画エラー:', error);
-            }
+            } catch (_) {}
         }
 
-        // スライドショー開始
         function startSlideshow() {
             if (!state.pdfDoc) return;
-
             state.isFullscreen = true;
             presentationContainer.classList.remove('hidden');
+            isInitialRender = true;
 
-            // 案内ガイド表示
-            guideOverlay.classList.remove('hidden', 'opacity-0');
-            guideOverlay.style.opacity = '1';
-
-            // フルスクリーン化を試める
             const elem = presentationContainer;
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.webkitRequestFullscreen) { /* Safari */
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) { /* IE11 */
-                elem.msRequestFullscreen();
+            if (elem.requestFullscreen) elem.requestFullscreen();
+            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+            else {
+                renderPresentationPage(state.currentPage);
+                isInitialRender = false;
             }
-
-            // 最初の一枚のレンダリング
-            renderPresentationPage(state.currentPage);
         }
 
-        // スライドショー終了
-        function stopSlideshow() {
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
-            }
+        function exitSlideshow() {
             state.isFullscreen = false;
+            if (document.fullscreenElement) document.exitFullscreen();
             presentationContainer.classList.add('hidden');
-            // 通常表示のページを同期
             renderMainPage(state.currentPage);
         }
-
-        // ガイドをフェードアウト
-        function hideGuide() {
-            guideOverlay.classList.add('opacity-0');
-            setTimeout(() => {
-                guideOverlay.classList.add('hidden');
-            }, 500);
-        }
-
-        // ==========================================
-        //  UI ユーティリティ
-        // ==========================================
 
         function showLoading(text) {
             loadingText.textContent = text;
             loadingOverlay.classList.remove('hidden');
         }
-
         function hideLoading() {
             loadingOverlay.classList.add('hidden');
-        }
-
-        // トースト通知（簡易アラート代替）
-        function showToast(message, type = 'info') {
-            const toast = document.createElement('div');
-            toast.className = `fixed bottom-4 right-4 px-6 py-3 rounded-xl shadow-lg text-white font-medium z-50 transform translate-y-10 opacity-0 transition-all duration-300 ${
-                type === 'error' ? 'bg-rose-600' : 'bg-slate-800'
-            }`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-
-            // アニメーション表示
-            setTimeout(() => {
-                toast.classList.remove('translate-y-10', 'opacity-0');
-            }, 10);
-
-            // 自動消去
-            setTimeout(() => {
-                toast.classList.add('translate-y-10', 'opacity-0');
-                setTimeout(() => {
-                    toast.remove();
-                }, 300);
-            }, 4000);
         }
     </script>
 </body>
