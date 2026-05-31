@@ -20,10 +20,14 @@
   ],
   "screenshots": [
     {
-      "src": "screenshot.png",
+      "src": "screenshot1.png",
       "sizes": "1920x1080",
-      "type": "image/png",
-      "form_factor": "wide"
+      "type": "image/png"
+    },
+    {
+      "src": "screenshot2.png",
+      "sizes": "1920x1080",
+      "type": "image/png"
     }
   ]
 }
