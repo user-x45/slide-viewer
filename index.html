@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="PDF Slide Viewer - ブラウザ上でPDFファイルを美しいスライド形式で表示。全画面スライドショー、キーボード操作、サムネイル一覧、ダークモード対応。">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="favicon.png">
@@ -10,7 +10,7 @@
     <title>PDF Slide Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
 
     <style>
         body {
@@ -95,91 +95,28 @@
         #main-view-container.zoomed.panning {
             cursor: grabbing;
         }
-        /* PC用サムネイルサイドバー */
-        .thumbnail-sidebar {
-            width: 260px;
-            background: white;
-            border-right: 1px solid #e2e8f0;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow: hidden;
-        }
-        .dark .thumbnail-sidebar {
-            background: #0f172a;
-            border-right-color: #1e293b;
-        }
-        .thumbnail-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            padding: 1rem;
-        }
-        .thumbnail-item {
-            cursor: pointer;
-            transition: all 0.2s;
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            border: 1px solid transparent;
-        }
-        .thumbnail-item:hover {
-            background: #f1f5f9;
-        }
-        .dark .thumbnail-item:hover {
-            background: #1e293b;
-        }
-        .thumbnail-item.active {
-            background: #f1f5f9;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 1px #6366f1;
-        }
-        .dark .thumbnail-item.active {
-            background: #1e293b;
-            border-color: #818cf8;
-        }
-        .thumbnail-canvas {
-            width: 100%;
-            border-radius: 0.375rem;
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .dark .thumbnail-canvas {
-            background: #0f172a;
-            border-color: #334155;
-        }
-        .thumbnail-label {
-            font-size: 0.7rem;
-            text-align: center;
-            margin-top: 0.4rem;
-            color: #64748b;
-            font-weight: 500;
-        }
-        .dark .thumbnail-label {
-            color: #94a3b8;
-        }
-        @media (max-width: 768px) {
-            .thumbnail-sidebar {
-                display: none !important;
-            }
-            .mobile-bottom-nav {
-                display: flex !important;
-            }
-        }
-        @media (min-width: 769px) {
-            .mobile-bottom-nav {
-                display: none !important;
-            }
-            .thumbnail-sidebar {
-                display: flex !important;
-            }
-            .desktop-page-indicator {
-                display: inline-flex !important;
-            }
-        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 flex flex-col overflow-hidden" style="height:100dvh;max-height:100dvh;">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 h-screen max-h-screen flex flex-col overflow-hidden">
+
+    <div id="mobile-warning-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
+            <div class="p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <i class="fa-solid fa-desktop text-indigo-500 text-2xl"></i>
+                    <h3 class="text-lg font-semibold text-slate-900 dark:text-white">PC環境を推奨します</h3>
+                </div>
+                <p class="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
+                    このアプリはPCブラウザに最適化されています。<br>スマートフォンでは一部の機能が正しく動作しない場合があります。
+                </p>
+            </div>
+            <div class="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-6 py-4 flex justify-end">
+                <button id="mobile-warning-ok" class="px-5 py-2.5 text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
 
     <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
         <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-sm w-full mx-4 overflow-hidden">
@@ -255,69 +192,50 @@
     </div>
 
     <div id="viewer-screen" class="hidden flex-1 flex flex-col h-full min-h-0 overflow-hidden">
-        <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-3 sm:px-6 py-3 flex items-center justify-between z-10 shrink-0 shadow-sm">
-            <div class="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-                <button id="btn-back-to-upload" class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0" title="ファイルを閉じる">
+        <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between z-10 shrink-0 shadow-sm">
+            <div class="flex items-center space-x-4 max-w-[60%]">
+                <button id="btn-back-to-upload" class="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors" title="ファイルを閉じる">
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
-                <div class="min-w-0 flex-1">
-                    <h2 id="pdf-title" class="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">PDF Title</h2>
-                    <p id="pdf-subtitle" class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">読み込み完了</p>
+                <div>
+                    <h2 id="pdf-title" class="text-lg font-bold text-slate-900 dark:text-white truncate">PDF Title</h2>
+                    <p id="pdf-subtitle" class="text-xs text-slate-500 dark:text-slate-400">読み込み完了</p>
                 </div>
             </div>
 
-            <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
-                <span class="desktop-page-indicator hidden text-sm font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg whitespace-nowrap">
-                    <span id="current-page-num">1</span> / <span id="total-pages-num">--</span>
+            <div class="flex items-center space-x-3">
+                <span class="text-sm font-medium text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg">
+                    <span id="current-page-num">1</span> / <span id="total-pages-num">--</span> ページ
                 </span>
 
-                <button id="btn-slideshow" class="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                    <i class="fa-solid fa-play text-xs sm:text-sm"></i>
-                    <span class="hidden sm:inline">スライドショー</span>
+                <button id="btn-slideshow" class="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                    <i class="fa-solid fa-play text-sm"></i>
+                    <span>スライドショー</span>
                 </button>
             </div>
         </header>
 
         <div class="flex-1 flex min-h-0 bg-slate-100 dark:bg-slate-950 overflow-hidden">
-            <!-- PC用サイドバー (サムネイル) -->
-            <aside id="thumbnail-sidebar" class="thumbnail-sidebar hidden flex-col shrink-0 h-full">
+            <aside class="w-64 bg-white dark:bg-slate-900 flex flex-col shrink-0 border-r border-slate-200 dark:border-slate-700 h-full">
                 <div class="p-3 border-b border-slate-200 dark:border-slate-700 shrink-0">
                     <span class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">スライド一覧</span>
                 </div>
-                <div id="thumbnail-list" class="flex-1 overflow-y-auto p-3 custom-scrollbar thumbnail-grid"></div>
+                <div id="thumbnail-list" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-white dark:bg-slate-900"></div>
             </aside>
 
-            <!-- メインビューエリア -->
-            <div class="flex-1 flex flex-col min-h-0">
-                <main id="main-view-container" class="flex-1 py-2 px-0 sm:p-8 flex items-center justify-center custom-scrollbar overflow-hidden relative">
-                    <div id="main-zoom-wrapper" style="display:flex;align-items:center;justify-content:center;transform-origin:center center;will-change:transform;">
-                        <div id="main-canvas-wrapper" class="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative">
-                            <canvas id="main-canvas" class="max-w-full max-h-full block object-contain"></canvas>
-                            <div id="main-link-overlay" class="link-overlay-container"></div>
-                        </div>
+            <main id="main-view-container" class="flex-1 p-8 flex items-center justify-center custom-scrollbar overflow-hidden relative">
+                <div id="main-zoom-wrapper" style="display:flex;align-items:center;justify-content:center;transform-origin:center center;will-change:transform;">
+                    <div id="main-canvas-wrapper" class="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative">
+                        <canvas id="main-canvas" class="max-w-full max-h-full block object-contain"></canvas>
+                        <div id="main-link-overlay" class="link-overlay-container"></div>
                     </div>
-                    <div id="main-zoom-hint" class="absolute bottom-4 right-4 bg-black/50 text-white text-xs px-3 py-1.5 rounded-lg backdrop-blur-sm pointer-events-none opacity-0 transition-opacity duration-300 flex items-center gap-1.5">
-                        <i class="fa-solid fa-magnifying-glass-plus"></i>
-                        <span id="main-zoom-level">100%</span>
-                        <span class="text-white/60 hidden sm:inline">· ダブルクリックでリセット</span>
-                    </div>
-                </main>
-
-                <!-- モバイル用下部ナビゲーション (スマホ時のみ表示) -->
-                <div class="mobile-bottom-nav shrink-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between gap-3">
-                    <button id="btn-prev-page" class="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                        <i class="fa-solid fa-chevron-left"></i>
-                        <span>前へ</span>
-                    </button>
-                    <span class="text-sm text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
-                        <span id="nav-current-page">1</span> / <span id="nav-total-pages">--</span> ページ
-                    </span>
-                    <button id="btn-next-page" class="flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-medium text-sm rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
-                        <span>次へ</span>
-                        <i class="fa-solid fa-chevron-right"></i>
-                    </button>
                 </div>
-            </div>
+                <div id="main-zoom-hint" class="absolute bottom-4 right-4 bg-black/50 text-white text-xs px-3 py-1.5 rounded-lg backdrop-blur-sm pointer-events-none opacity-0 transition-opacity duration-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                    <span id="main-zoom-level">100%</span>
+                    <span class="text-white/60">· ダブルクリックでリセット</span>
+                </div>
+            </main>
         </div>
     </div>
 
@@ -361,15 +279,25 @@
     </div>
 
     <script type="module">
+
         import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.min.mjs';
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs';
+
+        const mobileWarningModal = document.getElementById('mobile-warning-modal');
+        const mobileWarningOk = document.getElementById('mobile-warning-ok');
+
+        if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+            mobileWarningModal.classList.remove('hidden');
+        }
+
+        mobileWarningOk.addEventListener('click', () => {
+            mobileWarningModal.classList.add('hidden');
+        });
 
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         }
 
-        const isMobile = () => window.innerWidth < 769;
-        
         const state = {
             pdfDoc: null,
             currentPage: 1,
@@ -425,35 +353,80 @@
         let isHoveringIndicator = false;
 
         const zoomState = {
-            scale: 1, minScale: 1, maxScale: 4, offsetX: 0, offsetY: 0,
-            isPinching: false, lastPinchDist: 0, lastPinchMid: { x: 0, y: 0 },
-            isPanning: false, panStartX: 0, panStartY: 0, panStartOffsetX: 0, panStartOffsetY: 0,
-        };
-        const zoomWrapper = document.getElementById('presentation-zoom-wrapper');
-        const mainZoomWrapper = document.getElementById('main-zoom-wrapper');
-        const mainZoomState = {
-            scale: 1, minScale: 1, maxScale: 5, offsetX: 0, offsetY: 0,
-            isPinching: false, lastPinchDist: 0, lastPinchMid: { x: 0, y: 0 },
-            isPanning: false, panStartX: 0, panStartY: 0, panStartOffsetX: 0, panStartOffsetY: 0,
-            touchStartX: 0, touchStartY: 0,
+            scale: 1,
+            minScale: 1,
+            maxScale: 4,
+            offsetX: 0,
+            offsetY: 0,
+            isPinching: false,
+            lastPinchDist: 0,
+            lastPinchMid: { x: 0, y: 0 },
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+            panStartOffsetX: 0,
+            panStartOffsetY: 0,
         };
 
-        let laserCtx = null, lastMouseX = 0, lastMouseY = 0, isLaserPaused = false;
-        function initLaserCanvas() { laserCtx = laserCanvas.getContext('2d'); }
+        const zoomWrapper = document.getElementById('presentation-zoom-wrapper');
+        const mainZoomWrapper = document.getElementById('main-zoom-wrapper');
+
+        const mainZoomState = {
+            scale: 1,
+            minScale: 1,
+            maxScale: 5,
+            offsetX: 0,
+            offsetY: 0,
+            isPinching: false,
+            lastPinchDist: 0,
+            lastPinchMid: { x: 0, y: 0 },
+            isPanning: false,
+            panStartX: 0,
+            panStartY: 0,
+            panStartOffsetX: 0,
+            panStartOffsetY: 0,
+        };
+
+        let laserCtx = null;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let isLaserPaused = false;
+
+        function initLaserCanvas() {
+            laserCtx = laserCanvas.getContext('2d');
+        }
+
         function drawLaserPointer(x, y) {
             if (!laserCtx || !state.laserPointerEnabled || isLaserPaused) return;
-            laserCanvas.width = window.innerWidth; laserCanvas.height = window.innerHeight;
+
+            laserCanvas.width = window.innerWidth;
+            laserCanvas.height = window.innerHeight;
+
             laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
-            laserCtx.shadowColor = '#ef4444'; laserCtx.shadowBlur = 30;
-            laserCtx.beginPath(); laserCtx.arc(x, y, 12, 0, Math.PI * 2);
-            laserCtx.fillStyle = 'rgba(239, 68, 68, 0.6)'; laserCtx.fill();
+
+            laserCtx.shadowColor = '#ef4444';
+            laserCtx.shadowBlur = 30;
+            laserCtx.beginPath();
+            laserCtx.arc(x, y, 12, 0, Math.PI * 2);
+            laserCtx.fillStyle = 'rgba(239, 68, 68, 0.6)';
+            laserCtx.fill();
+
             laserCtx.shadowBlur = 10;
-            laserCtx.beginPath(); laserCtx.arc(x, y, 6, 0, Math.PI * 2);
-            laserCtx.fillStyle = '#ef4444'; laserCtx.fill();
+            laserCtx.beginPath();
+            laserCtx.arc(x, y, 6, 0, Math.PI * 2);
+            laserCtx.fillStyle = '#ef4444';
+            laserCtx.fill();
         }
-        function clearLaserPointer() { if (laserCtx) laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height); }
+
+        function clearLaserPointer() {
+            if (laserCtx) {
+                laserCtx.clearRect(0, 0, laserCanvas.width, laserCanvas.height);
+            }
+        }
+
         function toggleLaserPointer() {
             state.laserPointerEnabled = !state.laserPointerEnabled;
+
             if (state.laserPointerEnabled) {
                 laserCanvas.style.display = 'block';
                 presentationContainer.classList.add('laser-active');
@@ -467,27 +440,51 @@
                 laserToggle.classList.remove('text-amber-400');
             }
         }
-        function pauseLaser() { isLaserPaused = true; clearLaserPointer(); presentationContainer.classList.add('show-cursor'); }
-        function resumeLaser() { isLaserPaused = false; presentationContainer.classList.remove('show-cursor'); }
+
+        function pauseLaser() {
+            isLaserPaused = true;
+            clearLaserPointer();
+            presentationContainer.classList.add('show-cursor');
+        }
+
+        function resumeLaser() {
+            isLaserPaused = false;
+            presentationContainer.classList.remove('show-cursor');
+        }
 
         function applyZoomTransform() {
-            const vw = window.innerWidth, vh = window.innerHeight;
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
             const cw = presentationCanvas.offsetWidth * zoomState.scale;
             const ch = presentationCanvas.offsetHeight * zoomState.scale;
+
             const maxOffsetX = Math.max(0, (cw - vw) / 2);
             const maxOffsetY = Math.max(0, (ch - vh) / 2);
+
             zoomState.offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, zoomState.offsetX));
             zoomState.offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, zoomState.offsetY));
-            zoomWrapper.style.transform = `translate(${zoomState.offsetX}px, ${zoomState.offsetY}px) scale(${zoomState.scale})`;
+
+            zoomWrapper.style.transform =
+                `translate(${zoomState.offsetX}px, ${zoomState.offsetY}px) scale(${zoomState.scale})`;
         }
-        function resetZoom() { zoomState.scale = 1; zoomState.offsetX = 0; zoomState.offsetY = 0; if (zoomWrapper) zoomWrapper.style.transform = ''; }
+
+        function resetZoom() {
+            zoomState.scale = 1;
+            zoomState.offsetX = 0;
+            zoomState.offsetY = 0;
+            if (zoomWrapper) zoomWrapper.style.transform = '';
+        }
+
         function zoomAt(delta, clientX, clientY) {
             const prevScale = zoomState.scale;
             const newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, prevScale * delta));
             if (newScale === prevScale) return;
+
             const ratio = newScale / prevScale;
             const vw = window.innerWidth, vh = window.innerHeight;
-            const cx = clientX - vw / 2, cy = clientY - vh / 2;
+            const cx = clientX - vw / 2;
+            const cy = clientY - vh / 2;
+
             zoomState.offsetX = cx + (zoomState.offsetX - cx) * ratio;
             zoomState.offsetY = cy + (zoomState.offsetY - cy) * ratio;
             zoomState.scale = newScale;
@@ -497,6 +494,7 @@
         const mainZoomHint = document.getElementById('main-zoom-hint');
         const mainZoomLevel = document.getElementById('main-zoom-level');
         let mainZoomHintTimeout = null;
+
         function applyMainZoomTransform() {
             const rect = mainViewContainer.getBoundingClientRect();
             const cw = mainZoomWrapper.scrollWidth * mainZoomState.scale;
@@ -505,110 +503,842 @@
             const maxOffsetY = Math.max(0, (ch - rect.height) / 2);
             mainZoomState.offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, mainZoomState.offsetX));
             mainZoomState.offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, mainZoomState.offsetY));
-            mainZoomWrapper.style.transform = `translate(${mainZoomState.offsetX}px, ${mainZoomState.offsetY}px) scale(${mainZoomState.scale})`;
+            mainZoomWrapper.style.transform =
+                `translate(${mainZoomState.offsetX}px, ${mainZoomState.offsetY}px) scale(${mainZoomState.scale})`;
             mainZoomLevel.textContent = Math.round(mainZoomState.scale * 100) + '%';
             mainZoomHint.style.opacity = '1';
             clearTimeout(mainZoomHintTimeout);
             mainZoomHintTimeout = setTimeout(() => { mainZoomHint.style.opacity = '0'; }, 1500);
         }
+
         function resetMainZoom(showHint = false) {
-            mainZoomState.scale = 1; mainZoomState.offsetX = 0; mainZoomState.offsetY = 0;
+            mainZoomState.scale = 1;
+            mainZoomState.offsetX = 0;
+            mainZoomState.offsetY = 0;
             mainZoomWrapper.style.transform = '';
             mainViewContainer.classList.remove('zoomed', 'panning');
             clearTimeout(mainZoomHintTimeout);
-            if (showHint) { mainZoomLevel.textContent = '100%'; mainZoomHint.style.opacity = '1'; mainZoomHintTimeout = setTimeout(() => { mainZoomHint.style.opacity = '0'; }, 1500); }
-            else { mainZoomHint.style.opacity = '0'; }
+            if (showHint) {
+                mainZoomLevel.textContent = '100%';
+                mainZoomHint.style.opacity = '1';
+                mainZoomHintTimeout = setTimeout(() => { mainZoomHint.style.opacity = '0'; }, 1500);
+            } else {
+                mainZoomHint.style.opacity = '0';
+            }
         }
+
         function mainZoomAt(delta, clientX, clientY) {
             const prevScale = mainZoomState.scale;
             const newScale = Math.max(mainZoomState.minScale, Math.min(mainZoomState.maxScale, prevScale * delta));
             if (newScale === prevScale) return;
             const ratio = newScale / prevScale;
             const rect = mainViewContainer.getBoundingClientRect();
-            const cx = clientX - (rect.left + rect.width / 2), cy = clientY - (rect.top + rect.height / 2);
+            const cx = clientX - (rect.left + rect.width / 2);
+            const cy = clientY - (rect.top + rect.height / 2);
             mainZoomState.offsetX = cx + (mainZoomState.offsetX - cx) * ratio;
             mainZoomState.offsetY = cy + (mainZoomState.offsetY - cy) * ratio;
             mainZoomState.scale = newScale;
             applyMainZoomTransform();
-            if (mainZoomState.scale > 1) mainViewContainer.classList.add('zoomed');
-            else mainViewContainer.classList.remove('zoomed', 'panning');
+            if (mainZoomState.scale > 1) {
+                mainViewContainer.classList.add('zoomed');
+            } else {
+                mainViewContainer.classList.remove('zoomed', 'panning');
+            }
         }
 
-        function getTouchDist(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
-        function getTouchMidpoint(touches) { return { x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 }; }
+        mainViewContainer.addEventListener('wheel', e => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            mainZoomAt(delta, e.clientX, e.clientY);
+        }, { passive: false });
 
-        mainViewContainer.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); mainZoomAt(e.deltaY < 0 ? 1.1 : 1/1.1, e.clientX, e.clientY); }, { passive: false });
-        mainViewContainer.addEventListener('dblclick', e => { if (e.target.closest('a')) return; if (mainZoomState.scale > 1) resetMainZoom(true); else mainZoomAt(2, e.clientX, e.clientY); });
-        mainViewContainer.addEventListener('touchstart', e => { if (state.isPresentationMode || e.target.closest('a')) return; e.preventDefault(); if (e.touches.length === 2) { mainZoomState.isPinching = true; mainZoomState.isPanning = false; mainZoomState.lastPinchDist = getTouchDist(e.touches); mainZoomState.lastPinchMid = getTouchMidpoint(e.touches); } else if (e.touches.length === 1) { mainZoomState.isPinching = false; mainZoomState.touchStartX = e.touches[0].clientX; mainZoomState.touchStartY = e.touches[0].clientY; if (mainZoomState.scale > 1) { mainZoomState.isPanning = true; mainZoomState.panStartX = e.touches[0].clientX; mainZoomState.panStartY = e.touches[0].clientY; mainZoomState.panStartOffsetX = mainZoomState.offsetX; mainZoomState.panStartOffsetY = mainZoomState.offsetY; } } }, { passive: false });
-        mainViewContainer.addEventListener('touchmove', e => { if (state.isPresentationMode) return; e.preventDefault(); /* handling omitted for brevity but full logic as original */ });
-        mainViewContainer.addEventListener('touchend', e => { if (state.isPresentationMode) return; if (e.touches.length < 2) mainZoomState.isPinching = false; if (e.touches.length === 0) { mainZoomState.isPanning = false; if (mainZoomState.scale <= 1) resetMainZoom(); } });
-        mainViewContainer.addEventListener('mousedown', e => { if (state.isPresentationMode || mainZoomState.scale <= 1) return; mainZoomState.isPanning = true; mainZoomState.panStartX = e.clientX; mainZoomState.panStartY = e.clientY; mainZoomState.panStartOffsetX = mainZoomState.offsetX; mainZoomState.panStartOffsetY = mainZoomState.offsetY; mainViewContainer.classList.add('panning'); e.preventDefault(); });
-        document.addEventListener('mousemove', e => { if (mainZoomState.isPanning && !state.isPresentationMode) { mainZoomState.offsetX = mainZoomState.panStartOffsetX + (e.clientX - mainZoomState.panStartX); mainZoomState.offsetY = mainZoomState.panStartOffsetY + (e.clientY - mainZoomState.panStartY); applyMainZoomTransform(); } });
-        document.addEventListener('mouseup', () => { if (mainZoomState.isPanning) { mainZoomState.isPanning = false; mainViewContainer.classList.remove('panning'); } });
+        mainViewContainer.addEventListener('dblclick', e => {
+            if (e.target.closest('a')) return;
+            if (mainZoomState.scale > 1) {
+                resetMainZoom(true);
+            } else {
+                mainZoomAt(2, e.clientX, e.clientY);
+            }
+        });
 
-        presentationContainer.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.1 : 1/1.1, e.clientX, e.clientY); }, { passive: false });
-        presentationContainer.addEventListener('touchstart', e => { /* full logic as needed */ });
-        presentationContainer.addEventListener('touchmove', e => { /* full logic */ });
-        presentationContainer.addEventListener('touchend', e => { });
-        presentationContainer.addEventListener('mousedown', e => { if (zoomState.scale <= 1 || e.target.closest('a')) return; zoomState.isPanning = true; zoomState.panStartX = e.clientX; zoomState.panStartY = e.clientY; zoomState.panStartOffsetX = zoomState.offsetX; zoomState.panStartOffsetY = zoomState.offsetY; e.preventDefault(); });
-        document.addEventListener('mousemove', e => { if (zoomState.isPanning && state.isFullscreen) { zoomState.offsetX = zoomState.panStartOffsetX + (e.clientX - zoomState.panStartX); zoomState.offsetY = zoomState.panStartOffsetY + (e.clientY - zoomState.panStartY); applyZoomTransform(); } });
+        mainViewContainer.addEventListener('touchstart', e => {
+            if (state.isPresentationMode) return;
+            e.preventDefault();
+            if (e.touches.length === 2) {
+                mainZoomState.isPinching = true;
+                mainZoomState.isPanning = false;
+                mainZoomState.lastPinchDist = getTouchDist(e.touches);
+                mainZoomState.lastPinchMid = getTouchMidpoint(e.touches);
+            } else if (e.touches.length === 1) {
+                mainZoomState.isPinching = false;
+                if (mainZoomState.scale > 1) {
+                    mainZoomState.isPanning = true;
+                    mainZoomState.panStartX = e.touches[0].clientX;
+                    mainZoomState.panStartY = e.touches[0].clientY;
+                    mainZoomState.panStartOffsetX = mainZoomState.offsetX;
+                    mainZoomState.panStartOffsetY = mainZoomState.offsetY;
+                } else {
+                    mainZoomState.isPanning = false;
+                }
+            }
+        }, { passive: false });
+
+        mainViewContainer.addEventListener('touchmove', e => {
+            if (state.isPresentationMode) return;
+            e.preventDefault();
+            if (e.touches.length === 2) {
+                if (!mainZoomState.isPinching) {
+                    mainZoomState.isPinching = true;
+                    mainZoomState.lastPinchDist = getTouchDist(e.touches);
+                    mainZoomState.lastPinchMid = getTouchMidpoint(e.touches);
+                    return;
+                }
+                const dist = getTouchDist(e.touches);
+                const mid = getTouchMidpoint(e.touches);
+                const delta = dist / mainZoomState.lastPinchDist;
+                const prevScale = mainZoomState.scale;
+                const newScale = Math.max(mainZoomState.minScale, Math.min(mainZoomState.maxScale, prevScale * delta));
+                if (newScale !== prevScale) {
+                    const ratio = newScale / prevScale;
+                    const rect = mainViewContainer.getBoundingClientRect();
+                    const cx = mid.x - (rect.left + rect.width / 2);
+                    const cy = mid.y - (rect.top + rect.height / 2);
+                    mainZoomState.offsetX = cx + (mainZoomState.offsetX - cx) * ratio;
+                    mainZoomState.offsetY = cy + (mainZoomState.offsetY - cy) * ratio;
+                    mainZoomState.scale = newScale;
+                }
+                mainZoomState.offsetX += mid.x - mainZoomState.lastPinchMid.x;
+                mainZoomState.offsetY += mid.y - mainZoomState.lastPinchMid.y;
+                mainZoomState.lastPinchDist = dist;
+                mainZoomState.lastPinchMid = mid;
+                applyMainZoomTransform();
+                if (mainZoomState.scale > 1) {
+                    mainViewContainer.classList.add('zoomed');
+                } else {
+                    mainViewContainer.classList.remove('zoomed', 'panning');
+                }
+            } else if (e.touches.length === 1 && mainZoomState.isPanning && mainZoomState.scale > 1) {
+                mainZoomState.offsetX = mainZoomState.panStartOffsetX + (e.touches[0].clientX - mainZoomState.panStartX);
+                mainZoomState.offsetY = mainZoomState.panStartOffsetY + (e.touches[0].clientY - mainZoomState.panStartY);
+                applyMainZoomTransform();
+            }
+        }, { passive: false });
+
+        mainViewContainer.addEventListener('touchend', e => {
+            if (state.isPresentationMode) return;
+            if (e.touches.length < 2) mainZoomState.isPinching = false;
+            if (e.touches.length === 0) {
+                mainZoomState.isPanning = false;
+                if (mainZoomState.scale <= 1) resetMainZoom();
+            }
+            if (e.touches.length === 1 && mainZoomState.scale > 1) {
+                mainZoomState.isPanning = true;
+                mainZoomState.panStartX = e.touches[0].clientX;
+                mainZoomState.panStartY = e.touches[0].clientY;
+                mainZoomState.panStartOffsetX = mainZoomState.offsetX;
+                mainZoomState.panStartOffsetY = mainZoomState.offsetY;
+            }
+        }, { passive: false });
+
+        mainViewContainer.addEventListener('mousedown', e => {
+            if (state.isPresentationMode || mainZoomState.scale <= 1) return;
+            mainZoomState.isPanning = true;
+            mainZoomState.panStartX = e.clientX;
+            mainZoomState.panStartY = e.clientY;
+            mainZoomState.panStartOffsetX = mainZoomState.offsetX;
+            mainZoomState.panStartOffsetY = mainZoomState.offsetY;
+            mainViewContainer.classList.add('panning');
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!mainZoomState.isPanning || state.isPresentationMode) return;
+            mainZoomState.offsetX = mainZoomState.panStartOffsetX + (e.clientX - mainZoomState.panStartX);
+            mainZoomState.offsetY = mainZoomState.panStartOffsetY + (e.clientY - mainZoomState.panStartY);
+            applyMainZoomTransform();
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (mainZoomState.isPanning) {
+                mainZoomState.isPanning = false;
+                mainViewContainer.classList.remove('panning');
+            }
+        });
+
+        presentationContainer.addEventListener('wheel', e => {
+            if (!e.ctrlKey) return;
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            zoomAt(delta, e.clientX, e.clientY);
+        }, { passive: false });
+
+        function getTouchDist(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+        function getTouchMidpoint(touches) {
+            return {
+                x: (touches[0].clientX + touches[1].clientX) / 2,
+                y: (touches[0].clientY + touches[1].clientY) / 2,
+            };
+        }
+
+        presentationContainer.addEventListener('touchstart', e => {
+            if (e.touches.length === 2) {
+                zoomState.isPinching = true;
+                zoomState.isPanning = false;
+                zoomState.lastPinchDist = getTouchDist(e.touches);
+                zoomState.lastPinchMid = getTouchMidpoint(e.touches);
+                e.preventDefault();
+            } else if (e.touches.length === 1 && zoomState.scale > 1) {
+                zoomState.isPanning = true;
+                zoomState.panStartX = e.touches[0].clientX;
+                zoomState.panStartY = e.touches[0].clientY;
+                zoomState.panStartOffsetX = zoomState.offsetX;
+                zoomState.panStartOffsetY = zoomState.offsetY;
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        presentationContainer.addEventListener('touchmove', e => {
+            if (zoomState.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                const dist = getTouchDist(e.touches);
+                const delta = dist / zoomState.lastPinchDist;
+                zoomState.lastPinchDist = dist;
+                const mid = getTouchMidpoint(e.touches);
+
+                const prevScale = zoomState.scale;
+                const newScale = Math.max(zoomState.minScale, Math.min(zoomState.maxScale, prevScale * delta));
+                if (newScale !== prevScale) {
+                    const ratio = newScale / prevScale;
+                    const vw = window.innerWidth, vh = window.innerHeight;
+                    const cx = mid.x - vw / 2;
+                    const cy = mid.y - vh / 2;
+                    zoomState.offsetX = cx + (zoomState.offsetX - cx) * ratio;
+                    zoomState.offsetY = cy + (zoomState.offsetY - cy) * ratio;
+                    zoomState.scale = newScale;
+                }
+
+                zoomState.offsetX += mid.x - zoomState.lastPinchMid.x;
+                zoomState.offsetY += mid.y - zoomState.lastPinchMid.y;
+                zoomState.lastPinchMid = mid;
+
+                applyZoomTransform();
+            } else if (zoomState.isPanning && e.touches.length === 1 && zoomState.scale > 1) {
+                e.preventDefault();
+                zoomState.offsetX = zoomState.panStartOffsetX + (e.touches[0].clientX - zoomState.panStartX);
+                zoomState.offsetY = zoomState.panStartOffsetY + (e.touches[0].clientY - zoomState.panStartY);
+                applyZoomTransform();
+            }
+        }, { passive: false });
+
+        presentationContainer.addEventListener('touchend', e => {
+            if (e.touches.length < 2) zoomState.isPinching = false;
+            if (e.touches.length === 0) zoomState.isPanning = false;
+        });
+
+        presentationContainer.addEventListener('mousedown', e => {
+            if (zoomState.scale <= 1) return;
+            zoomState.isPanning = true;
+            zoomState.panStartX = e.clientX;
+            zoomState.panStartY = e.clientY;
+            zoomState.panStartOffsetX = zoomState.offsetX;
+            zoomState.panStartOffsetY = zoomState.offsetY;
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', e => {
+            if (zoomState.isPanning && state.isFullscreen) {
+                zoomState.offsetX = zoomState.panStartOffsetX + (e.clientX - zoomState.panStartX);
+                zoomState.offsetY = zoomState.panStartOffsetY + (e.clientY - zoomState.panStartY);
+                applyZoomTransform();
+            }
+        });
         document.addEventListener('mouseup', () => { zoomState.isPanning = false; });
 
-        function toggleMenu() { fsMenu.classList.toggle('hidden'); }
-        function closeMenu() { fsMenu.classList.add('hidden'); if (!isHoveringIndicator) { clearTimeout(hideTimeout); hideTimeout = setTimeout(() => { fsPageIndicator.classList.remove('show'); if (!state.laserPointerEnabled) presentationContainer.classList.add('hide-cursor'); }, 1500); } }
-        fsMenuButton.addEventListener('click', (e) => { e.stopImmediatePropagation(); toggleMenu(); });
-        laserToggle.addEventListener('click', (e) => { e.stopImmediatePropagation(); toggleLaserPointer(); closeMenu(); });
-        function updateExitFullscreenButton() { if (state.isFullscreen) { exitFullscreenIcon.className = 'fa-solid fa-compress w-4'; exitFullscreenText.textContent = '全画面を終了'; } else { exitFullscreenIcon.className = 'fa-solid fa-expand w-4'; exitFullscreenText.textContent = '全画面表示に変更'; } }
-        exitFullscreenBtn.addEventListener('click', (e) => { e.stopImmediatePropagation(); if (state.isFullscreen) exitFullscreenOnly(); else enterFullscreen(); closeMenu(); });
-        exitSlideshowBtn.addEventListener('click', (e) => { e.stopImmediatePropagation(); exitSlideshow(); closeMenu(); });
-        document.addEventListener('click', (e) => { if (!fsMenu.contains(e.target) && e.target !== fsMenuButton) closeMenu(); });
+        function toggleMenu() {
+            fsMenu.classList.toggle('hidden');
+        }
+
+        function closeMenu() {
+            fsMenu.classList.add('hidden');
+            if (!isHoveringIndicator) {
+                clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(() => {
+                    fsPageIndicator.classList.remove('show');
+                    if (!state.laserPointerEnabled) {
+                        presentationContainer.classList.add('hide-cursor');
+                    }
+                }, 1500);
+            }
+        }
+
+        fsMenuButton.addEventListener('click', (e) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            toggleMenu();
+        });
+
+        laserToggle.addEventListener('click', (e) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            toggleLaserPointer();
+            closeMenu();
+        });
+
+        function updateExitFullscreenButton() {
+            if (state.isFullscreen) {
+                exitFullscreenIcon.className = 'fa-solid fa-compress w-4';
+                exitFullscreenText.textContent = '全画面を終了';
+            } else {
+                exitFullscreenIcon.className = 'fa-solid fa-expand w-4';
+                exitFullscreenText.textContent = '全画面表示に変更';
+            }
+        }
+
+        exitFullscreenBtn.addEventListener('click', (e) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+
+            if (state.isFullscreen) {
+                exitFullscreenOnly();
+            } else {
+                enterFullscreen();
+            }
+            closeMenu();
+        });
+
+        exitSlideshowBtn.addEventListener('click', (e) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            exitSlideshow();
+            closeMenu();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!fsMenu.contains(e.target) && e.target !== fsMenuButton) {
+                closeMenu();
+            }
+        });
 
         dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('border-indigo-500', 'bg-slate-50/80'); });
         dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80'));
-        dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80'); if (e.dataTransfer.files[0]) handlePDFFile(e.dataTransfer.files[0]); });
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80');
+            if (e.dataTransfer.files[0]) handlePDFFile(e.dataTransfer.files[0]);
+        });
+
         pdfInput.addEventListener('change', e => e.target.files[0] && handlePDFFile(e.target.files[0]));
+
         btnBackToUpload.addEventListener('click', () => confirmModal.classList.remove('hidden'));
         confirmCancel.addEventListener('click', () => confirmModal.classList.add('hidden'));
         confirmOk.addEventListener('click', resetToUpload);
+
         btnRetryUpload.addEventListener('click', resetToUpload);
+
         btnSlideshow.addEventListener('click', startSlideshow);
-        const btnPrevPage = document.getElementById('btn-prev-page'), btnNextPage = document.getElementById('btn-next-page'), navCurrentPage = document.getElementById('nav-current-page'), navTotalPages = document.getElementById('nav-total-pages');
-        btnPrevPage.addEventListener('click', () => changePage(state.currentPage - 1));
-        btnNextPage.addEventListener('click', () => changePage(state.currentPage + 1));
-        function updateNavButtons() { if (!state.pdfDoc) return; navCurrentPage.textContent = state.currentPage; navTotalPages.textContent = state.totalPages; btnPrevPage.disabled = state.currentPage <= 1; btnNextPage.disabled = state.currentPage >= state.totalPages; }
 
-        presentationContainer.addEventListener('mousemove', (e) => { showOverlay(); if (state.laserPointerEnabled && !isLaserPaused) { lastMouseX = e.clientX; lastMouseY = e.clientY; drawLaserPointer(e.clientX, e.clientY); } });
-        [fsPageIndicator, fsMenu].forEach(el => { el.addEventListener('mouseenter', () => { if (state.laserPointerEnabled) pauseLaser(); }); el.addEventListener('mouseleave', () => { if (state.laserPointerEnabled) resumeLaser(); }); });
-        fsPageIndicator.addEventListener('mouseenter', () => { isHoveringIndicator = true; clearTimeout(hideTimeout); fsPageIndicator.classList.add('show'); });
-        fsPageIndicator.addEventListener('mouseleave', () => { isHoveringIndicator = false; if (fsMenu.classList.contains('hidden')) { hideTimeout = setTimeout(() => { fsPageIndicator.classList.remove('show'); if (!state.laserPointerEnabled) presentationContainer.classList.add('hide-cursor'); }, 1500); } });
-        function showOverlay() { fsPageIndicator.classList.add('show'); presentationContainer.classList.remove('hide-cursor'); clearTimeout(hideTimeout); hideTimeout = setTimeout(() => { if (!fsMenu.classList.contains('hidden') || isHoveringIndicator) return; fsPageIndicator.classList.remove('show'); if (!state.laserPointerEnabled) presentationContainer.classList.add('hide-cursor'); }, 1500); }
-        let _panMoved = false; presentationContainer.addEventListener('mousedown', () => { _panMoved = false; }, true); document.addEventListener('mousemove', () => { if (zoomState.isPanning) _panMoved = true; }, true);
-        presentationContainer.addEventListener('click', (e) => { if (fsPageIndicator.contains(e.target) || fsMenu.contains(e.target) || e.target.closest('a')) return; if (_panMoved) { _panMoved = false; return; } changePage(state.currentPage + 1, false); });
-        document.addEventListener('keydown', e => { if (!state.pdfDoc) return; if (['ArrowRight','ArrowDown',' ','Enter'].includes(e.key)) changePage(state.currentPage + 1, true); else if (['ArrowLeft','ArrowUp','Backspace'].includes(e.key)) changePage(state.currentPage - 1, true); else if (e.key === 'Escape') { if (state.isPresentationMode) exitSlideshow(); else if (!confirmModal.classList.contains('hidden')) confirmModal.classList.add('hidden'); } else if (e.key === 'F11' && state.isPresentationMode) { e.preventDefault(); exitSlideshow(); } });
-        document.addEventListener('fullscreenchange', () => { const wasFullscreen = state.isFullscreen; state.isFullscreen = !!document.fullscreenElement; updateExitFullscreenButton(); if (state.exitingFullscreenForLink) { state.exitingFullscreenForLink = false; if (state.isPresentationMode) { resetZoom(); renderPresentationPage(state.currentPage); } return; } if (state.isPresentationMode && wasFullscreen && !state.isFullscreen) exitSlideshow(); if (state.isPresentationMode) { resetZoom(); renderPresentationPage(state.currentPage); } if (document.fullscreenElement && isInitialRender) isInitialRender = false; });
+        presentationContainer.addEventListener('mousemove', (e) => {
+            showOverlay();
 
-        async function resolveDestToPageNum(dest) { try { let resolvedDest = dest; if (typeof dest === 'string') resolvedDest = await state.pdfDoc.getDestination(dest); if (!resolvedDest) return null; const ref = resolvedDest[0]; if (ref && typeof ref === 'object' && ref.num !== undefined) return (await state.pdfDoc.getPageIndex(ref)) + 1; if (typeof ref === 'number') return ref + 1; } catch (_) { } return null; }
-        async function renderLinkOverlay(page, canvas, overlayEl, viewport, isPresentationMode) { /* full rendering logic same as new.html, but keep compatibility */ overlayEl.innerHTML = ''; overlayEl.style.width = canvas.style.width || canvas.width + 'px'; overlayEl.style.height = canvas.style.height || canvas.height + 'px'; let annotations; try { annotations = await page.getAnnotations(); } catch (_) { return; } const dpr = window.devicePixelRatio || 1; const displayW = parseFloat(canvas.style.width) || canvas.width / dpr; const displayH = parseFloat(canvas.style.height) || canvas.height / dpr; const pdfW = viewport.width / (viewport.scale); const pdfH = viewport.height / (viewport.scale); const scaleX = displayW / pdfW; const scaleY = displayH / pdfH; for (const ann of annotations) { if (ann.subtype !== 'Link') continue; let href = null, destPageNum = null; if (ann.url) href = ann.url; else if (ann.unsafeUrl) href = ann.unsafeUrl; else if (ann.dest) destPageNum = await resolveDestToPageNum(ann.dest); if (!href && !destPageNum) continue; const [x1, y1, x2, y2] = ann.rect; const left = x1 * scaleX; const top = (pdfH - y2) * scaleY; const width = (x2 - x1) * scaleX; const height = (y2 - y1) * scaleY; const a = document.createElement('a'); a.style.left = left + 'px'; a.style.top = top + 'px'; a.style.width = width + 'px'; a.style.height = height + 'px'; if (destPageNum) { a.href = '#'; a.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); changePage(destPageNum, false); }); } else { a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer'; if (isPresentationMode) a.addEventListener('click', (e) => { e.stopPropagation(); if (state.isFullscreen) { state.exitingFullscreenForLink = true; document.exitFullscreen().catch(() => { state.exitingFullscreenForLink = false; }); } }); else a.addEventListener('click', (e) => e.stopPropagation()); } overlayEl.appendChild(a); } }
+            if (state.laserPointerEnabled && !isLaserPaused) {
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                drawLaserPointer(e.clientX, e.clientY);
+            }
+        });
 
-        function handlePDFFile(file) { if (!file.name.toLowerCase().endsWith('.pdf')) { uploadScreen.classList.add('hidden'); errorScreen.classList.remove('hidden'); return; } showLoading('PDFを解析中...'); state.pdfName = file.name; const reader = new FileReader(); reader.onload = () => { pdfjsLib.getDocument(new Uint8Array(reader.result)).promise.then(pdf => { state.pdfDoc = pdf; state.totalPages = pdf.numPages; state.currentPage = 1; pdfTitle.textContent = state.pdfName; pdfSubtitle.textContent = `総ページ数: ${state.totalPages} ページ`; totalPagesNum.textContent = state.totalPages; document.getElementById('fs-total-pages').textContent = state.totalPages; uploadScreen.classList.add('hidden'); errorScreen.classList.add('hidden'); viewerScreen.classList.remove('hidden'); initViewer(); }).catch(() => { hideLoading(); uploadScreen.classList.add('hidden'); errorScreen.classList.remove('hidden'); }); }; reader.readAsArrayBuffer(file); }
-        function resetToUpload() { if (state.pdfDoc) state.pdfDoc.destroy(); state.pdfDoc = null; state.currentPage = 1; state.totalPages = 0; state.pdfName = ''; state.isFullscreen = false; state.isPresentationMode = false; state.laserPointerEnabled = false; state.renderedThumbnails.clear(); if (document.fullscreenElement) document.exitFullscreen(); pdfInput.value = ''; dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80'); presentationContainer.classList.add('hidden'); laserCanvas.style.display = 'none'; clearLaserPointer(); confirmModal.classList.add('hidden'); errorScreen.classList.add('hidden'); viewerScreen.classList.add('hidden'); uploadScreen.classList.remove('hidden'); thumbnailList.innerHTML = ''; mainCanvas.getContext('2d').clearRect(0, 0, mainCanvas.width, mainCanvas.height); presentationCanvas.getContext('2d').clearRect(0, 0, presentationCanvas.width, presentationCanvas.height); mainLinkOverlay.innerHTML = ''; presentationLinkOverlay.innerHTML = ''; }
-        async function initViewer() { showLoading("PDFを読み込み中..."); thumbnailList.innerHTML = ''; for (let i = 1; i <= state.totalPages; i++) createThumbnailItem(i); await renderMainPage(1); updateNavButtons(); renderThumbnailsSequentially(); hideLoading(); }
-        function createThumbnailItem(pageNum) { const wrapper = document.createElement('div'); wrapper.id = `thumb-wrapper-${pageNum}`; wrapper.className = `thumbnail-item ${pageNum === 1 ? 'active' : ''}`; wrapper.onclick = () => changePage(pageNum, false); const canvas = document.createElement('canvas'); canvas.id = `thumb-canvas-${pageNum}`; canvas.className = "thumbnail-canvas"; const label = document.createElement('div'); label.className = "thumbnail-label"; label.textContent = pageNum; wrapper.append(canvas, label); thumbnailList.appendChild(wrapper); }
-        async function renderThumbnailsSequentially() { for (let i = 1; i <= state.totalPages; i++) if (!state.renderedThumbnails.has(i)) await renderThumbnail(i); }
-        async function renderThumbnail(pageNum) { try { const page = await state.pdfDoc.getPage(pageNum); const canvas = document.getElementById(`thumb-canvas-${pageNum}`); if (!canvas) return; const ctx = canvas.getContext('2d'); const viewport = page.getViewport({ scale: 0.25 }); canvas.width = viewport.width; canvas.height = viewport.height; await page.render({ canvasContext: ctx, viewport }).promise; state.renderedThumbnails.add(pageNum); } catch (_) { } }
+        const interactiveElements = [fsPageIndicator, fsMenu];
+
+        interactiveElements.forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                if (state.laserPointerEnabled) {
+                    pauseLaser();
+                }
+            });
+
+            el.addEventListener('mouseleave', () => {
+                if (state.laserPointerEnabled) {
+                    resumeLaser();
+                }
+            });
+        });
+
+        fsPageIndicator.addEventListener('mouseenter', () => {
+            isHoveringIndicator = true;
+            clearTimeout(hideTimeout);
+            fsPageIndicator.classList.add('show');
+        });
+
+        fsPageIndicator.addEventListener('mouseleave', () => {
+            isHoveringIndicator = false;
+            if (fsMenu.classList.contains('hidden')) {
+                hideTimeout = setTimeout(() => {
+                    fsPageIndicator.classList.remove('show');
+                    if (!state.laserPointerEnabled) {
+                        presentationContainer.classList.add('hide-cursor');
+                    }
+                }, 1500);
+            }
+        });
+
+        function showOverlay() {
+            fsPageIndicator.classList.add('show');
+            presentationContainer.classList.remove('hide-cursor');
+            clearTimeout(hideTimeout);
+            hideTimeout = setTimeout(() => {
+                if (!fsMenu.classList.contains('hidden') || isHoveringIndicator) return;
+                fsPageIndicator.classList.remove('show');
+                if (!state.laserPointerEnabled) {
+                    presentationContainer.classList.add('hide-cursor');
+                }
+            }, 1500);
+        }
+
+        let _panMoved = false;
+        presentationContainer.addEventListener('mousedown', () => { _panMoved = false; }, true);
+        document.addEventListener('mousemove', () => { if (zoomState.isPanning) _panMoved = true; }, true);
+
+        presentationContainer.addEventListener('click', (e) => {
+            if (fsPageIndicator.contains(e.target) || fsMenu.contains(e.target)) {
+                return;
+            }
+            if (_panMoved) {
+                _panMoved = false;
+                return;
+            }
+            changePage(state.currentPage + 1, false);
+        });
+
+        document.addEventListener('keydown', e => {
+            if (!state.pdfDoc) return;
+
+            if (['ArrowRight','ArrowDown',' ','Enter'].includes(e.key)) {
+                changePage(state.currentPage + 1, true);
+            }
+            else if (['ArrowLeft','ArrowUp','Backspace'].includes(e.key)) {
+                changePage(state.currentPage - 1, true);
+            }
+            else if (e.key === 'Escape') {
+                if (state.isPresentationMode) {
+                    exitSlideshow();
+                }
+                else if (!confirmModal.classList.contains('hidden')) {
+                    confirmModal.classList.add('hidden');
+                }
+            }
+            else if (e.key === 'F11') {
+                if (state.isPresentationMode) {
+                    e.preventDefault();
+                    exitSlideshow();
+                }
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            const wasFullscreen = state.isFullscreen;
+            state.isFullscreen = !!document.fullscreenElement;
+            updateExitFullscreenButton();
+
+            if (state.exitingFullscreenForLink) {
+                state.exitingFullscreenForLink = false;
+                if (state.isPresentationMode) {
+                    resetZoom();
+                    renderPresentationPage(state.currentPage);
+                }
+                return;
+            }
+
+            if (state.isPresentationMode && wasFullscreen && !state.isFullscreen) {
+                exitSlideshow();
+                return;
+            }
+
+            if (state.isPresentationMode) {
+                resetZoom();
+                renderPresentationPage(state.currentPage);
+            }
+
+            if (document.fullscreenElement && isInitialRender) {
+                isInitialRender = false;
+            }
+        });
+
+        async function resolveDestToPageNum(dest) {
+            try {
+                let resolvedDest = dest;
+                if (typeof dest === 'string') {
+                    resolvedDest = await state.pdfDoc.getDestination(dest);
+                }
+                if (!resolvedDest) return null;
+                const ref = resolvedDest[0];
+                if (ref && typeof ref === 'object' && ref.num !== undefined) {
+                    const pageIndex = await state.pdfDoc.getPageIndex(ref);
+                    return pageIndex + 1;
+                }
+                if (typeof ref === 'number') {
+                    return ref + 1;
+                }
+            } catch (_) {}
+            return null;
+        }
+
+        async function renderLinkOverlay(page, canvas, overlayEl, viewport, isPresentationMode) {
+            overlayEl.innerHTML = '';
+            overlayEl.style.width = canvas.style.width || canvas.width + 'px';
+            overlayEl.style.height = canvas.style.height || canvas.height + 'px';
+
+            let annotations;
+            try {
+                annotations = await page.getAnnotations();
+            } catch (_) {
+                return;
+            }
+
+            const dpr = window.devicePixelRatio || 1;
+            const displayW = parseFloat(canvas.style.width) || canvas.width / dpr;
+            const displayH = parseFloat(canvas.style.height) || canvas.height / dpr;
+            const pdfW = viewport.width / (viewport.scale);
+            const pdfH = viewport.height / (viewport.scale);
+            const scaleX = displayW / pdfW;
+            const scaleY = displayH / pdfH;
+
+            for (const ann of annotations) {
+                if (ann.subtype !== 'Link') continue;
+
+                let href = null;
+                let destPageNum = null;
+
+                if (ann.url) {
+                    href = ann.url;
+                } else if (ann.unsafeUrl) {
+                    href = ann.unsafeUrl;
+                } else if (ann.dest) {
+                    destPageNum = await resolveDestToPageNum(ann.dest);
+                    if (!destPageNum) continue;
+                }
+
+                if (!href && !destPageNum) continue;
+
+                const [x1, y1, x2, y2] = ann.rect;
+                const left = x1 * scaleX;
+                const top = (pdfH - y2) * scaleY;
+                const width = (x2 - x1) * scaleX;
+                const height = (y2 - y1) * scaleY;
+
+                const a = document.createElement('a');
+                a.style.left = left + 'px';
+                a.style.top = top + 'px';
+                a.style.width = width + 'px';
+                a.style.height = height + 'px';
+
+                if (destPageNum) {
+                    a.href = '#';
+                    a.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        changePage(destPageNum, false);
+                    });
+                } else {
+                    a.href = href;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+
+                    if (isPresentationMode) {
+                        a.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (state.isFullscreen) {
+                                state.exitingFullscreenForLink = true;
+                                document.exitFullscreen().catch(() => {
+                                    state.exitingFullscreenForLink = false;
+                                });
+                            }
+                        });
+                    } else {
+                        a.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                        });
+                    }
+                }
+
+                overlayEl.appendChild(a);
+            }
+        }
+
+        function handlePDFFile(file) {
+            if (!file.name.toLowerCase().endsWith('.pdf')) {
+                uploadScreen.classList.add('hidden');
+                errorScreen.classList.remove('hidden');
+                return;
+            }
+            showLoading('PDFを解析中...');
+            state.pdfName = file.name;
+            const reader = new FileReader();
+            reader.onload = () => {
+                pdfjsLib.getDocument(new Uint8Array(reader.result)).promise.then(pdf => {
+                    state.pdfDoc = pdf;
+                    state.totalPages = pdf.numPages;
+                    state.currentPage = 1;
+
+                    pdfTitle.textContent = state.pdfName;
+                    pdfSubtitle.textContent = `総ページ数: ${state.totalPages} ページ`;
+                    totalPagesNum.textContent = state.totalPages;
+                    document.getElementById('fs-total-pages').textContent = state.totalPages;
+
+                    uploadScreen.classList.add('hidden');
+                    errorScreen.classList.add('hidden');
+                    viewerScreen.classList.remove('hidden');
+                    initViewer();
+                }).catch(() => {
+                    hideLoading();
+                    uploadScreen.classList.add('hidden');
+                    errorScreen.classList.remove('hidden');
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function resetToUpload() {
+            if (state.pdfDoc) {
+                state.pdfDoc.destroy();
+            }
+            state.pdfDoc = null;
+            state.currentPage = 1;
+            state.totalPages = 0;
+            state.pdfName = '';
+            state.isFullscreen = false;
+            state.isPresentationMode = false;
+            state.laserPointerEnabled = false;
+            state.renderedThumbnails.clear();
+
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+
+            pdfInput.value = '';
+            dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80');
+
+            presentationContainer.classList.add('hidden');
+            laserCanvas.style.display = 'none';
+            clearLaserPointer();
+            confirmModal.classList.add('hidden');
+            errorScreen.classList.add('hidden');
+            viewerScreen.classList.add('hidden');
+            uploadScreen.classList.remove('hidden');
+
+            thumbnailList.innerHTML = '';
+            mainCanvas.getContext('2d').clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+            presentationCanvas.getContext('2d').clearRect(0, 0, presentationCanvas.width, presentationCanvas.height);
+            mainLinkOverlay.innerHTML = '';
+            presentationLinkOverlay.innerHTML = '';
+        }
+
+        async function initViewer() {
+            showLoading('スライド一覧を生成中...');
+            thumbnailList.innerHTML = '';
+            for (let i = 1; i <= state.totalPages; i++) createThumbnailPlaceholder(i);
+            await renderMainPage(1);
+            renderThumbnailsSequentially();
+            hideLoading();
+        }
+
+        function createThumbnailPlaceholder(pageNum) {
+            const wrapper = document.createElement('div');
+            wrapper.id = `thumb-wrapper-${pageNum}`;
+            wrapper.className = `cursor-pointer flex flex-col items-center p-2 rounded-lg transition-all border border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 group ${pageNum === 1 ? 'bg-slate-100 dark:bg-slate-800 border-indigo-500/50 ring-1 ring-indigo-500' : ''}`;
+            wrapper.onclick = () => changePage(pageNum, false);
+
+            const canvas = document.createElement('canvas');
+            canvas.id = `thumb-canvas-${pageNum}`;
+            canvas.className = "w-full rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-md group-hover:scale-[1.02] transition-transform duration-200 block";
+
+            const label = document.createElement('span');
+            label.className = "text-xs mt-1.5 text-slate-500 dark:text-slate-400 font-medium group-hover:text-slate-900 dark:group-hover:text-white transition-colors";
+            label.textContent = pageNum;
+
+            wrapper.append(canvas, label);
+            thumbnailList.appendChild(wrapper);
+        }
+
+        async function renderThumbnailsSequentially() {
+            for (let i = 1; i <= state.totalPages; i++) {
+                if (!state.renderedThumbnails.has(i)) await renderThumbnail(i);
+            }
+        }
+
+        async function renderThumbnail(pageNum) {
+            try {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const canvas = document.getElementById(`thumb-canvas-${pageNum}`);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const viewport = page.getViewport({ scale: 0.25 });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({canvasContext: ctx, viewport}).promise;
+                state.renderedThumbnails.add(pageNum);
+            } catch (_) {}
+        }
+
         let currentRenderTask = null;
-        async function renderMainPage(pageNum) { if (!state.pdfDoc) return; if (currentRenderTask) currentRenderTask.cancel(); try { const page = await state.pdfDoc.getPage(pageNum); const ctx = mainCanvas.getContext('2d'); const margin = isMobile() ? 8 : 64; const containerW = mainViewContainer.clientWidth - margin, containerH = mainViewContainer.clientHeight - margin; const unscaled = page.getViewport({ scale: 1 }); const dpr = window.devicePixelRatio || 1; const scale = Math.min(containerW / unscaled.width, containerH / unscaled.height) * dpr; const viewport = page.getViewport({ scale }); mainCanvas.width = viewport.width; mainCanvas.height = viewport.height; mainCanvas.style.width = `${viewport.width / dpr}px`; mainCanvas.style.height = `${viewport.height / dpr}px`; currentRenderTask = page.render({ canvasContext: ctx, viewport }); await currentRenderTask.promise; currentPageNum.textContent = pageNum; updateThumbnailActiveState(pageNum); await renderLinkOverlay(page, mainCanvas, mainLinkOverlay, viewport, false); } catch (_) { } }
-        function updateThumbnailActiveState(activePageNum) { for (let i = 1; i <= state.totalPages; i++) { const wrapper = document.getElementById(`thumb-wrapper-${i}`); if (!wrapper) continue; if (i === activePageNum) wrapper.classList.add('active'); else wrapper.classList.remove('active'); } }
-        function changePage(target, fromKeyboard = false) { if (!state.pdfDoc || target < 1 || target > state.totalPages) return; state.currentPage = target; if (state.isPresentationMode) { resetZoom(); renderPresentationPage(target); if (!fromKeyboard) showOverlay(); } else { resetMainZoom(); updateNavButtons(); renderMainPage(target); } }
+        async function renderMainPage(pageNum) {
+            if (!state.pdfDoc) return;
+            if (currentRenderTask) currentRenderTask.cancel();
+            try {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const ctx = mainCanvas.getContext('2d');
+                const containerW = mainViewContainer.clientWidth - 64;
+                const containerH = mainViewContainer.clientHeight - 64;
+                const unscaled = page.getViewport({scale: 1});
+                const dpr = window.devicePixelRatio || 1;
+                const scale = Math.min(containerW / unscaled.width, containerH / unscaled.height) * dpr;
+                const viewport = page.getViewport({scale});
+
+                mainCanvas.width = viewport.width;
+                mainCanvas.height = viewport.height;
+                mainCanvas.style.width = `${viewport.width / dpr}px`;
+                mainCanvas.style.height = `${viewport.height / dpr}px`;
+
+                currentRenderTask = page.render({canvasContext: ctx, viewport});
+                await currentRenderTask.promise;
+
+                currentPageNum.textContent = pageNum;
+                updateThumbnailActiveState(pageNum);
+                await renderLinkOverlay(page, mainCanvas, mainLinkOverlay, viewport, false);
+            } catch (_) {}
+        }
+
+        function updateThumbnailActiveState(activePageNum) {
+            for (let i = 1; i <= state.totalPages; i++) {
+                const wrapper = document.getElementById(`thumb-wrapper-${i}`);
+                if (!wrapper) continue;
+                if (i === activePageNum) {
+                    wrapper.classList.add('bg-slate-100', 'dark:bg-slate-800', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
+                    wrapper.classList.remove('border-transparent');
+                    wrapper.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                } else {
+                    wrapper.classList.remove('bg-slate-100', 'dark:bg-slate-800', 'border-indigo-500/50', 'ring-1', 'ring-indigo-500');
+                    wrapper.classList.add('border-transparent');
+                }
+            }
+        }
+
+        function changePage(target, fromKeyboard = false) {
+            if (!state.pdfDoc || target < 1 || target > state.totalPages) return;
+            state.currentPage = target;
+
+            if (state.isPresentationMode) {
+                resetZoom();
+                renderPresentationPage(target);
+                if (!fromKeyboard) showOverlay();
+            } else {
+                resetMainZoom();
+                renderMainPage(target);
+            }
+        }
+
         let presentationRenderTask = null;
-        async function renderPresentationPage(pageNum) { if (!state.pdfDoc) return; if (presentationRenderTask) presentationRenderTask.cancel(); try { const page = await state.pdfDoc.getPage(pageNum); const ctx = presentationCanvas.getContext('2d'); const dpr = window.devicePixelRatio || 1; const vw = window.innerWidth, vh = window.innerHeight; const unscaled = page.getViewport({ scale: 1 }); const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr; const viewport = page.getViewport({ scale }); presentationCanvas.width = viewport.width; presentationCanvas.height = viewport.height; presentationCanvas.style.width = `${viewport.width / dpr}px`; presentationCanvas.style.height = `${viewport.height / dpr}px`; presentationRenderTask = page.render({ canvasContext: ctx, viewport }); await presentationRenderTask.promise; document.getElementById('fs-current-page').textContent = pageNum; await renderLinkOverlay(page, presentationCanvas, presentationLinkOverlay, viewport, true); } catch (_) { } }
-        function startSlideshow() { if (!state.pdfDoc) return; state.isPresentationMode = true; state.isFullscreen = true; state.laserPointerEnabled = false; laserCanvas.style.display = 'none'; laserText.textContent = 'レーザー ポインタをオンにする'; laserToggle.classList.remove('text-amber-400'); presentationContainer.classList.remove('hidden'); isInitialRender = true; initLaserCanvas(); const elem = presentationContainer; if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else { renderPresentationPage(state.currentPage); isInitialRender = false; } updateExitFullscreenButton(); }
-        function enterFullscreen() { const elem = presentationContainer; if (elem.requestFullscreen) elem.requestFullscreen(); else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen(); else if (elem.msRequestFullscreen) elem.msRequestFullscreen(); }
-        function exitFullscreenOnly() { if (document.fullscreenElement) document.exitFullscreen(); state.isFullscreen = false; resetZoom(); renderPresentationPage(state.currentPage); updateExitFullscreenButton(); }
-        function exitSlideshow() { state.isFullscreen = false; state.isPresentationMode = false; state.laserPointerEnabled = false; resetZoom(); presentationContainer.classList.add('hidden'); presentationContainer.classList.remove('hide-cursor', 'laser-active'); laserCanvas.style.display = 'none'; clearLaserPointer(); if (document.fullscreenElement) document.exitFullscreen().then(() => setTimeout(() => renderMainPage(state.currentPage), 50)).catch(() => renderMainPage(state.currentPage)); else renderMainPage(state.currentPage); }
-        function showLoading(text) { loadingText.textContent = text; loadingOverlay.classList.remove('hidden'); }
-        function hideLoading() { loadingOverlay.classList.add('hidden'); }
-        window.addEventListener('resize', () => { if (state.pdfDoc && !state.isPresentationMode) renderMainPage(state.currentPage); });
-    </script>
+        async function renderPresentationPage(pageNum) {
+            if (!state.pdfDoc) return;
+            if (presentationRenderTask) presentationRenderTask.cancel();
+            try {
+                const page = await state.pdfDoc.getPage(pageNum);
+                const ctx = presentationCanvas.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const vw = window.innerWidth, vh = window.innerHeight;
+                const unscaled = page.getViewport({scale: 1});
+                const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr;
+                const viewport = page.getViewport({scale});
+
+                presentationCanvas.width = viewport.width;
+                presentationCanvas.height = viewport.height;
+                presentationCanvas.style.width = `${viewport.width / dpr}px`;
+                presentationCanvas.style.height = `${viewport.height / dpr}px`;
+
+                presentationRenderTask = page.render({canvasContext: ctx, viewport});
+                await presentationRenderTask.promise;
+                document.getElementById('fs-current-page').textContent = pageNum;
+                await renderLinkOverlay(page, presentationCanvas, presentationLinkOverlay, viewport, true);
+            } catch (_) {}
+        }
+
+        function startSlideshow() {
+            if (!state.pdfDoc) return;
+
+            state.isPresentationMode = true;
+            state.isFullscreen = true;
+            state.laserPointerEnabled = false;
+            laserCanvas.style.display = 'none';
+            laserText.textContent = 'レーザー ポインタをオンにする';
+            laserToggle.classList.remove('text-amber-400');
+            presentationContainer.classList.remove('hidden');
+            isInitialRender = true;
+            initLaserCanvas();
+
+            const elem = presentationContainer;
+            if (elem.requestFullscreen) elem.requestFullscreen();
+            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+            else {
+                renderPresentationPage(state.currentPage);
+                isInitialRender = false;
+            }
+            updateExitFullscreenButton();
+        }
+
+        function enterFullscreen() {
+            const elem = presentationContainer;
+            if (elem.requestFullscreen) elem.requestFullscreen();
+            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+        }
+
+        function exitFullscreenOnly() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            state.isFullscreen = false;
+            resetZoom();
+            renderPresentationPage(state.currentPage);
+            updateExitFullscreenButton();
+        }
+
+        function exitSlideshow() {
+            state.isFullscreen = false;
+            state.isPresentationMode = false;
+            state.laserPointerEnabled = false;
+
+            resetZoom();
+            presentationContainer.classList.add('hidden');
+            presentationContainer.classList.remove('hide-cursor', 'laser-active');
+            laserCanvas.style.display = 'none';
+            clearLaserPointer();
+
+            if (document.fullscreenElement) {
+                const exitPromise = document.exitFullscreen ? document.exitFullscreen() : Promise.resolve();
+                exitPromise.then(() => {
+                    setTimeout(() => {
+                        renderMainPage(state.currentPage);
+                    }, 50);
+                }).catch(() => {
+                    renderMainPage(state.currentPage);
+                });
+            } else {
+                renderMainPage(state.currentPage);
+            }
+        }
+
+        function showLoading(text) {
+            loadingText.textContent = text;
+            loadingOverlay.classList.remove('hidden');
+        }
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+    
+</script>
 </body>
 </html>
