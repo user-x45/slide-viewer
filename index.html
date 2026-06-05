@@ -97,7 +97,7 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 h-screen max-h-screen flex flex-col overflow-hidden">
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 flex flex-col overflow-hidden" style="height:100dvh;max-height:100dvh;">
 
 
     <div id="confirm-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center">
@@ -547,6 +547,7 @@
 
         mainViewContainer.addEventListener('touchstart', e => {
             if (state.isPresentationMode) return;
+            if (e.target.closest('a')) return;
             e.preventDefault();
             if (e.touches.length === 2) {
                 mainZoomState.isPinching = true;
@@ -555,6 +556,8 @@
                 mainZoomState.lastPinchMid = getTouchMidpoint(e.touches);
             } else if (e.touches.length === 1) {
                 mainZoomState.isPinching = false;
+                mainZoomState.touchStartX = e.touches[0].clientX;
+                mainZoomState.touchStartY = e.touches[0].clientY;
                 if (mainZoomState.scale > 1) {
                     mainZoomState.isPanning = true;
                     mainZoomState.panStartX = e.touches[0].clientX;
@@ -610,6 +613,18 @@
 
         mainViewContainer.addEventListener('touchend', e => {
             if (state.isPresentationMode) return;
+            if (e.changedTouches.length === 1 && !mainZoomState.isPinching) {
+                const dx = e.changedTouches[0].clientX - (mainZoomState.touchStartX || 0);
+                const dy = e.changedTouches[0].clientY - (mainZoomState.touchStartY || 0);
+                if (Math.hypot(dx, dy) < 8) {
+                    const el = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                    const link = el && el.closest('a');
+                    if (link) {
+                        link.click();
+                        e.preventDefault();
+                    }
+                }
+            }
             if (e.touches.length < 2) mainZoomState.isPinching = false;
             if (e.touches.length === 0) {
                 mainZoomState.isPanning = false;
