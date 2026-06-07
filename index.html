@@ -768,8 +768,15 @@
                     if (link) {
                         link.click();
                         e.preventDefault();
-                    } else if (!_touchMoved && !fsPageIndicator.contains(el) && !fsMenu.contains(el)) {
-                        changePage(state.currentPage + 1, false);
+                    } else if (!_touchMoved && (fsPageIndicator.contains(el) || fsMenu.contains(el))) {
+                        showOverlay();
+                        e.preventDefault();
+                    } else if (!_touchMoved) {
+                        if (state.currentPage >= state.totalPages) {
+                            showOverlay();
+                        } else {
+                            changePage(state.currentPage + 1, false);
+                        }
                         e.preventDefault();
                     }
                 }
