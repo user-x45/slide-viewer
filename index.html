@@ -768,10 +768,7 @@
                     if (link) {
                         link.click();
                         e.preventDefault();
-                    } else if (!_touchMoved && (fsPageIndicator.contains(el) || fsMenu.contains(el))) {
-                        showOverlay();
-                        e.preventDefault();
-                    } else if (!_touchMoved) {
+                    } else if (!_touchMoved && !fsPageIndicator.contains(el) && !fsMenu.contains(el)) {
                         if (state.currentPage >= state.totalPages) {
                             showOverlay();
                         } else {
@@ -828,6 +825,7 @@
         fsMenuButton.addEventListener('touchend', (e) => {
             e.stopImmediatePropagation();
             e.preventDefault();
+            showOverlay();
             toggleMenu();
         });
 
