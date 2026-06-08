@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -15,7 +14,7 @@
     <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getDatabase, ref, set, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+        import { getDatabase, ref, set, onValue, get, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
         // =====================================================================
         // 🔧 Firebase設定 — ここを自分のFirebaseプロジェクトの設定で置き換えてください
@@ -39,6 +38,7 @@
         window._firebaseSet = set;
         window._firebaseOnValue = onValue;
         window._firebaseGet = get;
+        window._firebaseRemove = remove;
         window._firebaseReady = true;
         window.dispatchEvent(new Event('firebase-ready'));
     </script>
@@ -1729,8 +1729,13 @@
             const refFn = window._firebaseRef;
             const setFn = window._firebaseSet;
             const onValueFn = window._firebaseOnValue;
+            const removeFn = window._firebaseRemove;
 
             if (remoteUnsubscribe) remoteUnsubscribe();
+
+            // 過去のセッションをすべて削除
+            await removeFn(refFn(db, 'sessions'));
+
             remoteSessionCode = generateCode();
             document.getElementById('remote-code-display').textContent = remoteSessionCode;
 
@@ -1759,6 +1764,11 @@
                     });
                 }
             });
+
+            // タブを閉じたときにセッションを削除
+            window.addEventListener('beforeunload', () => {
+                removeFn(refFn(db, 'sessions'));
+            }, { once: true });
 
             // QRコード生成
             const remoteUrl = `${location.href.split('?')[0]}?remote=${remoteSessionCode}`;
