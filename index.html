@@ -189,10 +189,22 @@
                     <span id="current-page-num">1</span>&nbsp;/&nbsp;<span id="total-pages-num">--</span>&nbsp;ページ
                 </span>
 
-                <button id="btn-slideshow" class="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                    <i class="fa-solid fa-play text-xs sm:text-sm"></i>
-                    <span class="hidden sm:inline">スライドショー</span>
-                </button>
+                <div class="relative flex items-stretch">
+                    <button id="btn-slideshow" class="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-l-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                        <i class="fa-solid fa-play text-xs sm:text-sm"></i>
+                        <span class="hidden sm:inline">スライドショー</span>
+                    </button>
+                    <div class="w-px bg-indigo-500 self-stretch"></div>
+                    <button id="btn-slideshow-menu" class="flex items-center px-2 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm rounded-r-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" title="その他のオプション">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div id="slideshow-dropdown" class="hidden absolute right-0 top-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1 w-52 z-50 menu">
+                        <button id="btn-presenter-view" class="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-left text-sm text-slate-700 dark:text-slate-200">
+                            <i class="fa-solid fa-display w-4 text-indigo-500"></i>
+                            <span>プレゼンター表示</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </header>
 
@@ -288,6 +300,7 @@
 
         const state = {
             pdfDoc: null,
+            pdfBuffer: null,
             currentPage: 1,
             totalPages: 0,
             pdfName: '',
@@ -961,6 +974,299 @@
 
         btnSlideshow.addEventListener('click', startSlideshow);
 
+        const btnSlideshowMenu = document.getElementById('btn-slideshow-menu');
+        const slideshowDropdown = document.getElementById('slideshow-dropdown');
+        const btnPresenterView = document.getElementById('btn-presenter-view');
+
+        btnSlideshowMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            slideshowDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!slideshowDropdown.contains(e.target) && e.target !== btnSlideshowMenu) {
+                slideshowDropdown.classList.add('hidden');
+            }
+        });
+
+        btnPresenterView.addEventListener('click', () => {
+            slideshowDropdown.classList.add('hidden');
+            startPresenterView();
+        });
+
+        let presenterWin = null;
+        let presenterChannel = null;
+
+        function startPresenterView() {
+            if (!state.pdfDoc) return;
+
+            state.isPresentationMode = true;
+            state.isFullscreen = false;
+            state.laserPointerEnabled = false;
+            laserCanvas.style.display = 'none';
+            laserText.textContent = 'レーザー ポインタをオンにする';
+            laserToggle.classList.remove('text-amber-400');
+            presentationContainer.classList.remove('hidden');
+            initLaserCanvas();
+            renderPresentationPage(state.currentPage);
+            updateExitFullscreenButton();
+
+            const channel = new BroadcastChannel('presenter_sync');
+            presenterChannel = channel;
+
+            channel.onmessage = (e) => {
+                if (e.data.type === 'ready') {
+                    const copy = state.pdfBuffer.slice(0);
+                    channel.postMessage({type:'pdf_data', buffer: copy, currentPage: state.currentPage}, [copy]);
+                } else if (e.data.type === 'goto') {
+                    changePage(e.data.page, false);
+                } else if (e.data.type === 'exit') {
+                    exitSlideshow();
+                }
+            };
+
+            const presenterHTML = buildPresenterHTML();
+            const blob = new Blob([presenterHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            presenterWin = window.open(url, 'PresenterView', 'width=900,height=600,resizable=yes,scrollbars=no');
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+        }
+
+        function buildPresenterHTML() {
+            return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>プレゼンター表示</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
+<style>
+body { font-family: "BIZ UDPGothic", sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; margin: 0; display: flex; flex-direction: column; overflow: hidden; }
+canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 18px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; border: none; }
+.btn-primary { background: #4f46e5; color: white; }
+.btn-primary:hover { background: #4338ca; }
+.btn-secondary { background: #1e293b; color: #e2e8f0; }
+.btn-secondary:hover { background: #334155; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+</style>
+</head>
+<body>
+<div style="display:flex;flex-direction:column;height:100vh;overflow:hidden;">
+
+  <div style="background:#1e293b;border-bottom:1px solid #334155;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <i class="fa-solid fa-display" style="color:#6366f1;"></i>
+      <span style="font-weight:700;font-size:15px;">プレゼンター表示</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="conn-status" style="font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:4px;"><span id="conn-dot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>接続中...</span>
+      <button class="btn btn-secondary" id="btn-close" style="padding:6px 12px;font-size:12px;">
+        <i class="fa-solid fa-xmark"></i> 終了
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;min-height:0;gap:0;">
+
+    <div style="flex:1;display:flex;flex-direction:column;min-width:0;padding:16px;gap:12px;">
+      <div style="flex:1;background:#0f172a;border-radius:12px;border:1px solid #334155;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0;position:relative;">
+        <canvas id="preview-canvas"></canvas>
+        <div id="loading-msg" style="position:absolute;color:#64748b;font-size:14px;">接続中...</div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-shrink:0;">
+        <button class="btn btn-secondary" id="btn-prev" disabled>
+          <i class="fa-solid fa-chevron-left"></i> 前へ
+        </button>
+
+        <div style="display:flex;align-items:center;gap:6px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:4px 10px;">
+          <input id="page-input" type="number" min="1" style="width:48px;background:transparent;border:none;outline:none;color:#e2e8f0;font-size:15px;font-weight:700;text-align:center;font-family:inherit;" value="1">
+          <span style="color:#64748b;font-size:14px;">/ <span id="total-pages">--</span></span>
+        </div>
+
+        <button class="btn btn-secondary" id="btn-next" disabled>
+          次へ <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+
+    <div style="width:180px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;">
+      <div style="padding:10px 12px;border-bottom:1px solid #334155;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;">スライド一覧</div>
+      <div id="thumb-list" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.min.mjs';
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.149/pdf.worker.min.mjs';
+
+const channel = new BroadcastChannel('presenter_sync');
+let pdfDoc = null;
+let currentPage = 1;
+let totalPages = 0;
+let renderTask = null;
+let thumbsRendered = new Set();
+
+const previewCanvas = document.getElementById('preview-canvas');
+const pageInput = document.getElementById('page-input');
+const totalPagesEl = document.getElementById('total-pages');
+const btnPrev = document.getElementById('btn-prev');
+const btnNext = document.getElementById('btn-next');
+const loadingMsg = document.getElementById('loading-msg');
+const thumbList = document.getElementById('thumb-list');
+const connDot = document.getElementById('conn-dot');
+const connStatus = document.getElementById('conn-status');
+
+async function loadPDF(arrayBuffer) {
+  pdfDoc = await pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise;
+  totalPages = pdfDoc.numPages;
+  totalPagesEl.textContent = totalPages;
+  pageInput.max = totalPages;
+  btnPrev.disabled = currentPage <= 1;
+  btnNext.disabled = currentPage >= totalPages;
+  loadingMsg.style.display = 'none';
+  connDot.style.background = '#22c55e';
+  connStatus.childNodes[1].textContent = '接続中';
+  buildThumbs();
+  await renderPreview(currentPage);
+}
+
+async function renderPreview(pageNum) {
+  if (!pdfDoc) return;
+  if (renderTask) { try { renderTask.cancel(); } catch(_){} }
+  const page = await pdfDoc.getPage(pageNum);
+  const container = previewCanvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const maxW = container.clientWidth - 16;
+  const maxH = container.clientHeight - 16;
+  const unscaled = page.getViewport({scale:1});
+  const scale = Math.min(maxW / unscaled.width, maxH / unscaled.height) * dpr;
+  const vp = page.getViewport({scale});
+  previewCanvas.width = vp.width;
+  previewCanvas.height = vp.height;
+  previewCanvas.style.width = vp.width/dpr + 'px';
+  previewCanvas.style.height = vp.height/dpr + 'px';
+  const ctx = previewCanvas.getContext('2d');
+  renderTask = page.render({canvasContext: ctx, viewport: vp});
+  await renderTask.promise;
+}
+
+function buildThumbs() {
+  thumbList.innerHTML = '';
+  for (let i = 1; i <= totalPages; i++) {
+    const wrap = document.createElement('div');
+    wrap.id = 'tw-' + i;
+    wrap.style.cssText = 'cursor:pointer;border-radius:6px;border:2px solid transparent;padding:4px;transition:border-color 0.15s;flex-shrink:0;';
+    wrap.addEventListener('click', () => goto(i));
+    const c = document.createElement('canvas');
+    c.id = 'tc-' + i;
+    c.style.cssText = 'width:100%;display:block;border-radius:4px;';
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'text-align:center;font-size:11px;color:#64748b;margin-top:3px;';
+    lbl.textContent = i;
+    wrap.append(c, lbl);
+    thumbList.appendChild(wrap);
+    renderThumb(i);
+  }
+  updateThumbActive(currentPage);
+}
+
+async function renderThumb(pageNum) {
+  if (!pdfDoc || thumbsRendered.has(pageNum)) return;
+  const page = await pdfDoc.getPage(pageNum);
+  const canvas = document.getElementById('tc-' + pageNum);
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const vp = page.getViewport({scale: 0.25 * dpr});
+  canvas.width = vp.width;
+  canvas.height = vp.height;
+  canvas.style.width = vp.width/dpr + 'px';
+  canvas.style.height = vp.height/dpr + 'px';
+  await page.render({canvasContext: canvas.getContext('2d'), viewport: vp}).promise;
+  thumbsRendered.add(pageNum);
+}
+
+function updateThumbActive(pageNum) {
+  for (let i = 1; i <= totalPages; i++) {
+    const w = document.getElementById('tw-' + i);
+    if (!w) continue;
+    w.style.borderColor = i === pageNum ? '#6366f1' : 'transparent';
+    w.style.background = i === pageNum ? '#312e81' : 'transparent';
+  }
+  const active = document.getElementById('tw-' + pageNum);
+  if (active) active.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function goto(page) {
+  if (!pdfDoc || page < 1 || page > totalPages) return;
+  currentPage = page;
+  pageInput.value = page;
+  btnPrev.disabled = page <= 1;
+  btnNext.disabled = page >= totalPages;
+  updateThumbActive(page);
+  renderPreview(page);
+  channel.postMessage({type:'goto', page});
+}
+
+btnPrev.addEventListener('click', () => goto(currentPage - 1));
+btnNext.addEventListener('click', () => goto(currentPage + 1));
+
+pageInput.addEventListener('change', () => {
+  const v = parseInt(pageInput.value);
+  if (!isNaN(v)) goto(Math.max(1, Math.min(totalPages, v)));
+});
+pageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const v = parseInt(pageInput.value);
+    if (!isNaN(v)) goto(Math.max(1, Math.min(totalPages, v)));
+  }
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goto(currentPage + 1); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goto(currentPage - 1); }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (document.activeElement === pageInput) return;
+  if (['ArrowRight','ArrowDown',' '].includes(e.key)) { e.preventDefault(); goto(currentPage + 1); }
+  else if (['ArrowLeft','ArrowUp'].includes(e.key)) { e.preventDefault(); goto(currentPage - 1); }
+});
+
+channel.onmessage = (e) => {
+  if (e.data.type === 'pdf_data') {
+    currentPage = e.data.currentPage || 1;
+    pageInput.value = currentPage;
+    loadPDF(e.data.buffer);
+  } else if (e.data.type === 'page_change') {
+    currentPage = e.data.page;
+    pageInput.value = currentPage;
+    btnPrev.disabled = currentPage <= 1;
+    btnNext.disabled = currentPage >= totalPages;
+    updateThumbActive(currentPage);
+    renderPreview(currentPage);
+  } else if (e.data.type === 'closed') {
+    window.close();
+  }
+};
+
+document.getElementById('btn-close').addEventListener('click', () => {
+  channel.postMessage({type:'exit'});
+  window.close();
+});
+
+window.addEventListener('resize', () => { if (pdfDoc) renderPreview(currentPage); });
+
+channel.postMessage({type:'ready'});
+<\/script>
+</body>
+</html>`;
+        }
+
         const btnPrevPage = document.getElementById('btn-prev-page');
         const btnNextPage = document.getElementById('btn-next-page');
         const navCurrentPage = document.getElementById('nav-current-page');
@@ -1218,8 +1524,10 @@
             state.pdfName = file.name;
             const reader = new FileReader();
             reader.onload = () => {
-                pdfjsLib.getDocument(new Uint8Array(reader.result)).promise.then(pdf => {
+                const arrayBuffer = reader.result;
+                pdfjsLib.getDocument(new Uint8Array(arrayBuffer)).promise.then(pdf => {
                     state.pdfDoc = pdf;
+                    state.pdfBuffer = arrayBuffer;
                     state.totalPages = pdf.numPages;
                     state.currentPage = 1;
 
@@ -1246,6 +1554,7 @@
                 state.pdfDoc.destroy();
             }
             state.pdfDoc = null;
+            state.pdfBuffer = null;
             state.currentPage = 1;
             state.totalPages = 0;
             state.pdfName = '';
@@ -1323,9 +1632,12 @@
                 const canvas = document.getElementById(`thumb-canvas-${pageNum}`);
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                const viewport = page.getViewport({ scale: 0.25 });
+                const dpr = window.devicePixelRatio || 1;
+                const viewport = page.getViewport({ scale: 0.25 * dpr });
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+                canvas.style.width = `${viewport.width / dpr}px`;
+                canvas.style.height = `${viewport.height / dpr}px`;
                 await page.render({canvasContext: ctx, viewport}).promise;
                 state.renderedThumbnails.add(pageNum);
             } catch (_) {}
@@ -1384,6 +1696,7 @@
                 resetZoom();
                 renderPresentationPage(target);
                 if (!fromKeyboard) showOverlay();
+                if (presenterChannel) presenterChannel.postMessage({type:'page_change', page: target});
             } else {
                 resetMainZoom();
                 updateNavButtons();
@@ -1473,6 +1786,16 @@
             presentationContainer.classList.remove('hide-cursor', 'laser-active');
             laserCanvas.style.display = 'none';
             clearLaserPointer();
+
+            if (presenterChannel) {
+                presenterChannel.postMessage({type:'closed'});
+                presenterChannel.close();
+                presenterChannel = null;
+            }
+            if (presenterWin && !presenterWin.closed) {
+                presenterWin.close();
+                presenterWin = null;
+            }
 
             if (document.fullscreenElement) {
                 const exitPromise = document.exitFullscreen ? document.exitFullscreen() : Promise.resolve();
