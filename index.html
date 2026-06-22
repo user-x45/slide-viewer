@@ -1305,11 +1305,6 @@
         }
 
         function resetToUpload() {
-            if (window.history && window.history.replaceState) {
-                const url = new URL(window.location);
-                url.searchParams.delete('url');
-                window.history.replaceState({}, '', url.pathname + url.search);
-            }
             if (state.pdfDoc) {
                 state.pdfDoc.destroy();
             }
@@ -1344,6 +1339,10 @@
             presentationCanvas.getContext('2d').clearRect(0, 0, presentationCanvas.width, presentationCanvas.height);
             mainLinkOverlay.innerHTML = '';
             presentationLinkOverlay.innerHTML = '';
+
+            const url = new URL(window.location);
+            url.searchParams.delete('url');
+            window.history.replaceState({}, document.title, url.toString());
         }
 
         async function initViewer() {
@@ -1474,7 +1473,7 @@
                 const dpr = window.devicePixelRatio || 1;
                 const vw = window.innerWidth, vh = window.innerHeight;
                 const unscaled = page.getViewport({scale: 1});
-                const scale = Math.max(vw / unscaled.width, vh / unscaled.height) * dpr;
+                const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr;
                 const viewport = page.getViewport({scale});
 
                 presentationCanvas.width = viewport.width;
@@ -1563,6 +1562,18 @@
                 renderMainPage(state.currentPage);
             }
         }
+
+        let resizeTimeout = null;
+        function handleResize() {
+            if (state.isPresentationMode) {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(() => {
+                    resetZoom();
+                    renderPresentationPage(state.currentPage);
+                }, 100);
+            }
+        }
+        window.addEventListener('resize', handleResize);
 
         function showLoading(text) {
             loadingText.textContent = text;
