@@ -1409,13 +1409,16 @@
                 const containerH = mainViewContainer.clientHeight - margin;
                 const unscaled = page.getViewport({scale: 1});
                 const dpr = window.devicePixelRatio || 1;
-                const scale = Math.min(containerW / unscaled.width, containerH / unscaled.height) * dpr;
+                const fitScale = Math.min(containerW / unscaled.width, containerH / unscaled.height);
+                const scale = Math.max(fitScale, 1) * dpr;
                 const viewport = page.getViewport({scale});
+                const displayW = Math.round(fitScale * unscaled.width);
+                const displayH = Math.round(fitScale * unscaled.height);
 
                 mainCanvas.width = viewport.width;
                 mainCanvas.height = viewport.height;
-                mainCanvas.style.width = `${viewport.width / dpr}px`;
-                mainCanvas.style.height = `${viewport.height / dpr}px`;
+                mainCanvas.style.width = `${displayW}px`;
+                mainCanvas.style.height = `${displayH}px`;
 
                 currentRenderTask = page.render({canvasContext: ctx, viewport});
                 await currentRenderTask.promise;
