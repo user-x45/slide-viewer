@@ -981,7 +981,7 @@
         pdfUrlInput.addEventListener('keydown', e => { if (e.key === 'Enter') handlePDFUrl(pdfUrlInput.value); });
 
         const urlParams = new URLSearchParams(window.location.search);
-        const pdfParam = urlParams.get('pdf');
+        const pdfParam = urlParams.get('url');
         if (pdfParam) {
             handlePDFUrl(pdfParam);
         }
