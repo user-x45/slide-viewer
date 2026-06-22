@@ -1339,6 +1339,12 @@
             presentationCanvas.getContext('2d').clearRect(0, 0, presentationCanvas.width, presentationCanvas.height);
             mainLinkOverlay.innerHTML = '';
             presentationLinkOverlay.innerHTML = '';
+
+            if (window.location.search.includes('url=')) {
+                const url = new URL(window.location);
+                url.searchParams.delete('url');
+                window.history.replaceState({}, document.title, url.pathname + url.search);
+            }
         }
 
         async function initViewer() {
@@ -1504,10 +1510,25 @@
             initLaserCanvas();
 
             const elem = presentationContainer;
-            if (elem.requestFullscreen) elem.requestFullscreen();
-            else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
-            else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
-            else {
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().then(() => {
+                    renderPresentationPage(state.currentPage);
+                }).catch(() => {
+                    renderPresentationPage(state.currentPage);
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen().then(() => {
+                    renderPresentationPage(state.currentPage);
+                }).catch(() => {
+                    renderPresentationPage(state.currentPage);
+                });
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen().then(() => {
+                    renderPresentationPage(state.currentPage);
+                }).catch(() => {
+                    renderPresentationPage(state.currentPage);
+                });
+            } else {
                 renderPresentationPage(state.currentPage);
                 isInitialRender = false;
             }
