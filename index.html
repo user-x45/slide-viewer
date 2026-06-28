@@ -326,9 +326,11 @@
         const pdfSubtitle = document.getElementById('pdf-subtitle');
         const currentPageNum = document.getElementById('current-page-num');
         const totalPagesNum = document.getElementById('total-pages-num');
-        const thumbnailList = window.innerWidth >= 640
-            ? document.getElementById('thumbnail-list')
-            : document.getElementById('thumbnail-list-sp');
+        function getThumbnailList() {
+            return window.innerWidth >= 640
+                ? document.getElementById('thumbnail-list')
+                : document.getElementById('thumbnail-list-sp');
+        }
         const mainCanvas = document.getElementById('main-canvas');
         const mainViewContainer = document.getElementById('main-view-container');
         const presentationCanvas = document.getElementById('presentation-canvas');
@@ -1381,7 +1383,7 @@
             label.textContent = pageNum;
 
             wrapper.append(canvas, label);
-            thumbnailList.appendChild(wrapper);
+            getThumbnailList().appendChild(wrapper);
         }
 
         async function renderThumbnailsSequentially() {
@@ -1569,15 +1571,20 @@
 
         let resizeTimeout = null;
         function handleResize() {
-            if (state.isPresentationMode) {
-                clearTimeout(resizeTimeout);
-                resizeTimeout = setTimeout(() => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (state.isPresentationMode) {
                     resetZoom();
                     renderPresentationPage(state.currentPage);
-                }, 100);
-            }
+                } else if (!viewerScreen.classList.contains('hidden')) {
+                    resetMainZoom();
+                    updateNavButtons();
+                    renderMainPage(state.currentPage);
+                }
+            }, 100);
         }
         window.addEventListener('resize', handleResize);
+        window.visualViewport?.addEventListener('resize', handleResize);
 
         function showLoading(text) {
             loadingText.textContent = text;
