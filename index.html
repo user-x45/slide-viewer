@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PDF Slide Viewer - ブラウザ上でPDFファイルを美しいスライド形式で表示。全画面スライドショー、キーボード操作、サムネイル一覧、ダークモード対応。">
+    <meta name="description" content="Slide Viewer - ブラウザ上でPDFファイルや画像ファイルを美しいスライド形式で表示。全画面スライドショー、キーボード操作、サムネイル一覧、ダークモード対応。">
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="manifest" href="manifest.json">
-    <title>PDF Slide Viewer</title>
+    <title>Slide Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
@@ -129,9 +129,9 @@
             <div class="inline-flex p-4 bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400 rounded-3xl mb-6">
                 <i class="fa-solid fa-circle-exclamation text-6xl"></i>
             </div>
-            <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-3">PDFの読み込みに失敗しました</h2>
+            <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-3">ファイルの読み込みに失敗しました</h2>
             <p class="text-slate-600 dark:text-slate-400 max-w-md mx-auto mb-8">
-                ファイルが破損しているか、対応していない形式の可能性があります。<br>別のPDFファイルをお試しください。
+                ファイルが破損しているか、対応していない形式の可能性があります。<br>別のPDFファイルまたは画像ファイルをお試しください。
             </p>
             <button id="btn-retry-upload" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-2xl flex items-center gap-3 mx-auto transition">
                 <i class="fa-solid fa-rotate"></i>
@@ -144,25 +144,25 @@
         <div class="flex flex-col justify-center items-center p-6 max-w-4xl mx-auto w-full min-h-full">
         <div class="text-center mb-8">
             <div class="inline-flex p-3 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 rounded-2xl mb-4 shadow-sm">
-                <i class="fa-solid fa-file-pdf text-4xl"></i>
+                <i class="fa-solid fa-images text-4xl"></i>
             </div>
             <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight sm:text-4xl mb-3">
-                PDF Slide Viewer
+                Slide Viewer
             </h1>
             <p class="text-base text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                PDFファイルをアップロードして、美しいスライド形式でプレゼンテーション。全画面スライドショー機能も搭載。
+                PDFファイルや画像ファイルをアップロードして、美しいスライド形式でプレゼンテーション。全画面スライドショー機能も搭載。
             </p>
         </div>
 
         <div id="drop-zone" class="w-full bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-8 text-center hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all cursor-pointer shadow-sm group">
-            <input type="file" id="pdf-input" accept=".pdf" class="hidden" />
+            <input type="file" id="pdf-input" accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.bmp" multiple class="hidden" />
             <div class="flex flex-col items-center">
                 <i class="fa-solid fa-cloud-arrow-up text-5xl text-slate-400 dark:text-slate-600 group-hover:text-indigo-500 transition-colors mb-4"></i>
                 <p class="text-base font-semibold text-slate-700 dark:text-slate-300 mb-1 group-hover:text-indigo-600 transition-colors">
-                    PDFファイルをドラッグ＆ドロップ
+                    PDFファイルや画像ファイルをドラッグ＆ドロップ
                 </p>
                 <p class="text-sm text-slate-500 dark:text-slate-400 mb-5">
-                    またはファイルを選択してください
+                    またはファイルを選択してください（画像は複数選択可）
                 </p>
                 <button type="button" onclick="document.getElementById('pdf-input').click()" class="px-5 py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-lg shadow hover:bg-indigo-700 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     ファイルを選択
@@ -187,7 +187,7 @@
 
         <p class="text-xs text-slate-400 dark:text-slate-500 mt-6 flex items-center">
             <i class="fa-solid fa-shield-halved mr-1"></i>
-            PDFファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません。
+            PDFファイルや画像ファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません。
         </p>
         </div>
     </div>
@@ -199,7 +199,7 @@
                     <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
                 <div class="min-w-0 flex-1">
-                    <h2 id="pdf-title" class="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">PDF Title</h2>
+                    <h2 id="pdf-title" class="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">Slide Title</h2>
                     <p id="pdf-subtitle" class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">読み込み完了</p>
                 </div>
             </div>
@@ -307,7 +307,9 @@
         }
 
         const state = {
+            mode: 'pdf',
             pdfDoc: null,
+            images: [],
             currentPage: 1,
             totalPages: 0,
             pdfName: '',
@@ -968,10 +970,10 @@
         dropZone.addEventListener('drop', e => {
             e.preventDefault();
             dropZone.classList.remove('border-indigo-500', 'bg-slate-50/80');
-            if (e.dataTransfer.files[0]) handlePDFFile(e.dataTransfer.files[0]);
+            if (e.dataTransfer.files.length) handleFiles(e.dataTransfer.files);
         });
 
-        pdfInput.addEventListener('change', e => e.target.files[0] && handlePDFFile(e.target.files[0]));
+        pdfInput.addEventListener('change', e => e.target.files.length && handleFiles(e.target.files));
 
         btnBackToUpload.addEventListener('click', () => confirmModal.classList.remove('hidden'));
         confirmCancel.addEventListener('click', () => confirmModal.classList.add('hidden'));
@@ -1002,7 +1004,7 @@
         if (btnNextPage) btnNextPage.addEventListener('click', () => changePage(state.currentPage + 1));
 
         function updateNavButtons() {
-            if (!state.pdfDoc) return;
+            if (!state.totalPages) return;
             if (navCurrentPage) navCurrentPage.textContent = state.currentPage;
             if (navTotalPages) navTotalPages.textContent = state.totalPages;
             if (btnPrevPage) btnPrevPage.disabled = state.currentPage <= 1;
@@ -1086,7 +1088,7 @@
         });
 
         document.addEventListener('keydown', e => {
-            if (!state.pdfDoc) return;
+            if (!state.totalPages) return;
 
             if (['ArrowRight','ArrowDown',' ','Enter'].includes(e.key)) {
                 changePage(state.currentPage + 1, true);
@@ -1240,6 +1242,31 @@
             }
         }
 
+        const imageExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+
+        function isImageFile(name) {
+            const lower = name.toLowerCase();
+            return imageExtensions.some(ext => lower.endsWith(ext));
+        }
+
+        function handleFiles(fileList) {
+            const files = Array.from(fileList);
+            if (files.length === 0) return;
+
+            if (files.length === 1 && files[0].name.toLowerCase().endsWith('.pdf')) {
+                handlePDFFile(files[0]);
+                return;
+            }
+
+            if (files.every(f => isImageFile(f.name))) {
+                handleImageFiles(files);
+                return;
+            }
+
+            uploadScreen.classList.add('hidden');
+            errorScreen.classList.remove('hidden');
+        }
+
         function handlePDFFile(file) {
             if (!file.name.toLowerCase().endsWith('.pdf')) {
                 uploadScreen.classList.add('hidden');
@@ -1251,6 +1278,8 @@
             const reader = new FileReader();
             reader.onload = () => {
                 pdfjsLib.getDocument(new Uint8Array(reader.result)).promise.then(pdf => {
+                    state.mode = 'pdf';
+                    state.images = [];
                     state.pdfDoc = pdf;
                     state.totalPages = pdf.numPages;
                     state.currentPage = 1;
@@ -1273,6 +1302,45 @@
             reader.readAsArrayBuffer(file);
         }
 
+        function loadImageFile(file) {
+            return new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const img = new Image();
+                img.onload = () => resolve({ element: img, width: img.naturalWidth, height: img.naturalHeight, url, name: file.name });
+                img.onerror = reject;
+                img.src = url;
+            });
+        }
+
+        async function handleImageFiles(files) {
+            showLoading('画像を読み込み中...');
+            try {
+                const sorted = files.slice().sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                const images = await Promise.all(sorted.map(loadImageFile));
+
+                state.mode = 'image';
+                state.pdfDoc = null;
+                state.images = images;
+                state.totalPages = images.length;
+                state.currentPage = 1;
+                state.pdfName = sorted.length === 1 ? sorted[0].name : `画像スライド（${sorted.length}枚）`;
+
+                pdfTitle.textContent = state.pdfName;
+                pdfSubtitle.textContent = `総ページ数: ${state.totalPages} ページ`;
+                totalPagesNum.textContent = state.totalPages;
+                document.getElementById('fs-total-pages').textContent = state.totalPages;
+
+                uploadScreen.classList.add('hidden');
+                errorScreen.classList.add('hidden');
+                viewerScreen.classList.remove('hidden');
+                initViewer();
+            } catch (_) {
+                hideLoading();
+                uploadScreen.classList.add('hidden');
+                errorScreen.classList.remove('hidden');
+            }
+        }
+
         async function handlePDFUrl(url) {
             const trimmed = url.trim();
             if (!trimmed) return;
@@ -1289,6 +1357,8 @@
                 const pdf = await loadingTask.promise;
                 const urlObj = new URL(trimmed);
                 const fileName = urlObj.pathname.split('/').pop() || 'document.pdf';
+                state.mode = 'pdf';
+                state.images = [];
                 state.pdfDoc = pdf;
                 state.totalPages = pdf.numPages;
                 state.currentPage = 1;
@@ -1314,7 +1384,10 @@
             if (state.pdfDoc) {
                 state.pdfDoc.destroy();
             }
+            state.images.forEach(img => URL.revokeObjectURL(img.url));
+            state.mode = 'pdf';
             state.pdfDoc = null;
+            state.images = [];
             state.currentPage = 1;
             state.totalPages = 0;
             state.pdfName = '';
@@ -1394,48 +1467,77 @@
 
         async function renderThumbnail(pageNum) {
             try {
-                const page = await state.pdfDoc.getPage(pageNum);
                 const canvas = document.getElementById(`thumb-canvas-${pageNum}`);
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                const viewport = page.getViewport({ scale: 0.5 });
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-                await page.render({canvasContext: ctx, viewport}).promise;
+                if (state.mode === 'image') {
+                    const img = state.images[pageNum - 1];
+                    const scale = 0.5;
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    ctx.drawImage(img.element, 0, 0, canvas.width, canvas.height);
+                } else {
+                    const page = await state.pdfDoc.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 0.5 });
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    await page.render({canvasContext: ctx, viewport}).promise;
+                }
                 state.renderedThumbnails.add(pageNum);
             } catch (_) {}
         }
 
         let currentRenderTask = null;
         async function renderMainPage(pageNum) {
-            if (!state.pdfDoc) return;
+            if (!state.totalPages) return;
             if (currentRenderTask) currentRenderTask.cancel();
             try {
-                const page = await state.pdfDoc.getPage(pageNum);
                 const ctx = mainCanvas.getContext('2d');
                 const isMobile = window.innerWidth < 640;
                 const margin = isMobile ? 8 : 64;
                 const containerW = mainViewContainer.clientWidth - margin;
                 const containerH = mainViewContainer.clientHeight - margin;
-                const unscaled = page.getViewport({scale: 1});
                 const dpr = window.devicePixelRatio || 1;
-                const fitScale = Math.min(containerW / unscaled.width, containerH / unscaled.height);
-                const scale = Math.max(fitScale, 1) * dpr;
-                const viewport = page.getViewport({scale});
-                const displayW = Math.round(fitScale * unscaled.width);
-                const displayH = Math.round(fitScale * unscaled.height);
 
-                mainCanvas.width = viewport.width;
-                mainCanvas.height = viewport.height;
-                mainCanvas.style.width = `${displayW}px`;
-                mainCanvas.style.height = `${displayH}px`;
+                if (state.mode === 'image') {
+                    const img = state.images[pageNum - 1];
+                    const fitScale = Math.min(containerW / img.width, containerH / img.height);
+                    const scale = Math.max(fitScale, 1) * dpr;
+                    const displayW = Math.round(fitScale * img.width);
+                    const displayH = Math.round(fitScale * img.height);
 
-                currentRenderTask = page.render({canvasContext: ctx, viewport});
-                await currentRenderTask.promise;
+                    mainCanvas.width = Math.round(img.width * scale);
+                    mainCanvas.height = Math.round(img.height * scale);
+                    mainCanvas.style.width = `${displayW}px`;
+                    mainCanvas.style.height = `${displayH}px`;
 
-                currentPageNum.textContent = pageNum;
-                updateThumbnailActiveState(pageNum);
-                await renderLinkOverlay(page, mainCanvas, mainLinkOverlay, viewport, false);
+                    ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+                    ctx.drawImage(img.element, 0, 0, mainCanvas.width, mainCanvas.height);
+
+                    currentPageNum.textContent = pageNum;
+                    updateThumbnailActiveState(pageNum);
+                    mainLinkOverlay.innerHTML = '';
+                } else {
+                    const page = await state.pdfDoc.getPage(pageNum);
+                    const unscaled = page.getViewport({scale: 1});
+                    const fitScale = Math.min(containerW / unscaled.width, containerH / unscaled.height);
+                    const scale = Math.max(fitScale, 1) * dpr;
+                    const viewport = page.getViewport({scale});
+                    const displayW = Math.round(fitScale * unscaled.width);
+                    const displayH = Math.round(fitScale * unscaled.height);
+
+                    mainCanvas.width = viewport.width;
+                    mainCanvas.height = viewport.height;
+                    mainCanvas.style.width = `${displayW}px`;
+                    mainCanvas.style.height = `${displayH}px`;
+
+                    currentRenderTask = page.render({canvasContext: ctx, viewport});
+                    await currentRenderTask.promise;
+
+                    currentPageNum.textContent = pageNum;
+                    updateThumbnailActiveState(pageNum);
+                    await renderLinkOverlay(page, mainCanvas, mainLinkOverlay, viewport, false);
+                }
             } catch (_) {}
         }
 
@@ -1455,7 +1557,7 @@
         }
 
         function changePage(target, fromKeyboard = false) {
-            if (!state.pdfDoc || target < 1 || target > state.totalPages) return;
+            if (!state.totalPages || target < 1 || target > state.totalPages) return;
             state.currentPage = target;
 
             if (state.isPresentationMode) {
@@ -1471,31 +1573,49 @@
 
         let presentationRenderTask = null;
         async function renderPresentationPage(pageNum) {
-            if (!state.pdfDoc) return;
+            if (!state.totalPages) return;
             if (presentationRenderTask) presentationRenderTask.cancel();
             try {
-                const page = await state.pdfDoc.getPage(pageNum);
                 const ctx = presentationCanvas.getContext('2d');
                 const dpr = window.devicePixelRatio || 1;
                 const vw = window.innerWidth, vh = window.innerHeight;
-                const unscaled = page.getViewport({scale: 1});
-                const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr;
-                const viewport = page.getViewport({scale});
 
-                presentationCanvas.width = viewport.width;
-                presentationCanvas.height = viewport.height;
-                presentationCanvas.style.width = `${viewport.width / dpr}px`;
-                presentationCanvas.style.height = `${viewport.height / dpr}px`;
+                if (state.mode === 'image') {
+                    const img = state.images[pageNum - 1];
+                    const scale = Math.min(vw / img.width, vh / img.height) * dpr;
+                    const canvasW = Math.round(img.width * scale);
+                    const canvasH = Math.round(img.height * scale);
 
-                presentationRenderTask = page.render({canvasContext: ctx, viewport});
-                await presentationRenderTask.promise;
-                document.getElementById('fs-current-page').textContent = pageNum;
-                await renderLinkOverlay(page, presentationCanvas, presentationLinkOverlay, viewport, true);
+                    presentationCanvas.width = canvasW;
+                    presentationCanvas.height = canvasH;
+                    presentationCanvas.style.width = `${canvasW / dpr}px`;
+                    presentationCanvas.style.height = `${canvasH / dpr}px`;
+
+                    ctx.clearRect(0, 0, canvasW, canvasH);
+                    ctx.drawImage(img.element, 0, 0, canvasW, canvasH);
+                    document.getElementById('fs-current-page').textContent = pageNum;
+                    presentationLinkOverlay.innerHTML = '';
+                } else {
+                    const page = await state.pdfDoc.getPage(pageNum);
+                    const unscaled = page.getViewport({scale: 1});
+                    const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr;
+                    const viewport = page.getViewport({scale});
+
+                    presentationCanvas.width = viewport.width;
+                    presentationCanvas.height = viewport.height;
+                    presentationCanvas.style.width = `${viewport.width / dpr}px`;
+                    presentationCanvas.style.height = `${viewport.height / dpr}px`;
+
+                    presentationRenderTask = page.render({canvasContext: ctx, viewport});
+                    await presentationRenderTask.promise;
+                    document.getElementById('fs-current-page').textContent = pageNum;
+                    await renderLinkOverlay(page, presentationCanvas, presentationLinkOverlay, viewport, true);
+                }
             } catch (_) {}
         }
 
         function startSlideshow() {
-            if (!state.pdfDoc) return;
+            if (!state.totalPages) return;
 
             state.isPresentationMode = true;
             state.isFullscreen = true;
