@@ -228,7 +228,7 @@
 
             <div class="flex-1 flex flex-col min-h-0">
                 <main id="main-view-container" class="flex-1 py-2 px-0 sm:p-8 flex items-center justify-center custom-scrollbar overflow-hidden relative">
-                    <div id="main-zoom-wrapper" style="display:flex;align-items:center;justify-content:center;transform-origin:center center;will-change:transform;">
+                    <div id="main-zoom-wrapper" style="display:flex;align-items:center;justify-content:center;transform-origin:center center;">
                         <div id="main-canvas-wrapper" class="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 overflow-hidden relative">
                             <canvas id="main-canvas" class="max-w-full max-h-full block object-contain"></canvas>
                             <div id="main-link-overlay" class="link-overlay-container"></div>
@@ -378,6 +378,57 @@
             panStartOffsetY: 0,
         };
 
+        const MAX_CANVAS_PIXELS = window.matchMedia('(pointer: coarse)').matches ? 16000000 : 40000000;
+        const MAX_CANVAS_SIDE = 16384;
+        let mainHiResTimer = null;
+        let presentationHiResTimer = null;
+        let mainRenderedScale = 0;
+        let presentationRenderedScale = 0;
+        let mainRenderId = 0;
+        let presentationRenderId = 0;
+
+        function limitScale(scale, w, h) {
+            let s = scale;
+            const area = w * s * h * s;
+            if (area > MAX_CANVAS_PIXELS) s *= Math.sqrt(MAX_CANVAS_PIXELS / area);
+            const side = Math.max(w, h) * s;
+            if (side > MAX_CANVAS_SIDE) s *= MAX_CANVAS_SIDE / side;
+            return s;
+        }
+
+        function startRender(page, scale) {
+            const viewport = page.getViewport({scale});
+            const buffer = document.createElement('canvas');
+            buffer.width = Math.max(1, Math.floor(viewport.width));
+            buffer.height = Math.max(1, Math.floor(viewport.height));
+            const task = page.render({canvasContext: buffer.getContext('2d'), viewport});
+            return {task, buffer, viewport};
+        }
+
+        function commitBuffer(canvas, buffer, displayW, displayH) {
+            canvas.width = buffer.width;
+            canvas.height = buffer.height;
+            canvas.style.width = `${displayW}px`;
+            canvas.style.height = `${displayH}px`;
+            canvas.getContext('2d').drawImage(buffer, 0, 0);
+        }
+
+        function needsRerender(desired, rendered) {
+            return !rendered || desired > rendered * 1.02 || desired < rendered * 0.6;
+        }
+
+        function scheduleMainHiRes() {
+            clearTimeout(mainHiResTimer);
+            if (!state.pdfDoc || state.isPresentationMode) return;
+            mainHiResTimer = setTimeout(() => renderMainPage(state.currentPage, true), 150);
+        }
+
+        function schedulePresentationHiRes() {
+            clearTimeout(presentationHiResTimer);
+            if (!state.pdfDoc || !state.isPresentationMode) return;
+            presentationHiResTimer = setTimeout(() => renderPresentationPage(state.currentPage, true), 150);
+        }
+
         const zoomWrapper = document.getElementById('presentation-zoom-wrapper');
         const mainZoomWrapper = document.getElementById('main-zoom-wrapper');
 
@@ -476,6 +527,7 @@
 
             zoomWrapper.style.transform =
                 `translate(${zoomState.offsetX}px, ${zoomState.offsetY}px) scale(${zoomState.scale})`;
+            schedulePresentationHiRes();
         }
 
         function resetZoom() {
@@ -483,6 +535,7 @@
             zoomState.offsetX = 0;
             zoomState.offsetY = 0;
             if (zoomWrapper) zoomWrapper.style.transform = '';
+            schedulePresentationHiRes();
         }
 
         function zoomAt(delta, clientX, clientY) {
@@ -519,6 +572,7 @@
             mainZoomHint.style.opacity = '1';
             clearTimeout(mainZoomHintTimeout);
             mainZoomHintTimeout = setTimeout(() => { mainZoomHint.style.opacity = '0'; }, 1500);
+            scheduleMainHiRes();
         }
 
         function resetMainZoom(showHint = false) {
@@ -528,6 +582,7 @@
             mainZoomWrapper.style.transform = '';
             mainViewContainer.classList.remove('zoomed', 'panning');
             clearTimeout(mainZoomHintTimeout);
+            scheduleMainHiRes();
             if (showHint) {
                 mainZoomLevel.textContent = '100%';
                 mainZoomHint.style.opacity = '1';
@@ -1398,7 +1453,7 @@
                 const canvas = document.getElementById(`thumb-canvas-${pageNum}`);
                 if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                const viewport = page.getViewport({ scale: 0.5 });
+                const viewport = page.getViewport({ scale: 0.5 * Math.max(window.devicePixelRatio || 1, 1) });
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
                 await page.render({canvasContext: ctx, viewport}).promise;
@@ -1407,12 +1462,12 @@
         }
 
         let currentRenderTask = null;
-        async function renderMainPage(pageNum) {
+        async function renderMainPage(pageNum, refine = false) {
             if (!state.pdfDoc) return;
-            if (currentRenderTask) currentRenderTask.cancel();
+            let renderId = refine ? mainRenderId : ++mainRenderId;
             try {
                 const page = await state.pdfDoc.getPage(pageNum);
-                const ctx = mainCanvas.getContext('2d');
+                if (renderId !== mainRenderId) return;
                 const isMobile = window.innerWidth < 640;
                 const margin = isMobile ? 8 : 64;
                 const containerW = mainViewContainer.clientWidth - margin;
@@ -1420,22 +1475,33 @@
                 const unscaled = page.getViewport({scale: 1});
                 const dpr = window.devicePixelRatio || 1;
                 const fitScale = Math.min(containerW / unscaled.width, containerH / unscaled.height);
-                const scale = Math.max(fitScale, 1) * dpr;
-                const viewport = page.getViewport({scale});
+                const zoom = Math.max(mainZoomState.scale, 1);
+                const scale = limitScale(Math.max(fitScale * zoom, 1) * dpr, unscaled.width, unscaled.height);
                 const displayW = Math.round(fitScale * unscaled.width);
                 const displayH = Math.round(fitScale * unscaled.height);
 
-                mainCanvas.width = viewport.width;
-                mainCanvas.height = viewport.height;
-                mainCanvas.style.width = `${displayW}px`;
-                mainCanvas.style.height = `${displayH}px`;
+                if (refine) {
+                    if (!currentRenderTask && !needsRerender(scale, mainRenderedScale)) return;
+                    renderId = ++mainRenderId;
+                }
+                if (currentRenderTask) currentRenderTask.cancel();
 
-                currentRenderTask = page.render({canvasContext: ctx, viewport});
-                await currentRenderTask.promise;
+                const job = startRender(page, scale);
+                currentRenderTask = job.task;
+                try {
+                    await job.task.promise;
+                } finally {
+                    if (currentRenderTask === job.task) currentRenderTask = null;
+                }
+                if (renderId !== mainRenderId) return;
 
+                commitBuffer(mainCanvas, job.buffer, displayW, displayH);
+                mainRenderedScale = scale;
+
+                if (refine) return;
                 currentPageNum.textContent = pageNum;
                 updateThumbnailActiveState(pageNum);
-                await renderLinkOverlay(page, mainCanvas, mainLinkOverlay, viewport, false);
+                await renderLinkOverlay(page, mainCanvas, mainLinkOverlay, job.viewport, false);
             } catch (_) {}
         }
 
@@ -1470,27 +1536,42 @@
         }
 
         let presentationRenderTask = null;
-        async function renderPresentationPage(pageNum) {
+        async function renderPresentationPage(pageNum, refine = false) {
             if (!state.pdfDoc) return;
-            if (presentationRenderTask) presentationRenderTask.cancel();
+            let renderId = refine ? presentationRenderId : ++presentationRenderId;
             try {
                 const page = await state.pdfDoc.getPage(pageNum);
-                const ctx = presentationCanvas.getContext('2d');
+                if (renderId !== presentationRenderId) return;
                 const dpr = window.devicePixelRatio || 1;
                 const vw = window.innerWidth, vh = window.innerHeight;
                 const unscaled = page.getViewport({scale: 1});
-                const scale = Math.min(vw / unscaled.width, vh / unscaled.height) * dpr;
-                const viewport = page.getViewport({scale});
+                const fitScale = Math.min(vw / unscaled.width, vh / unscaled.height);
+                const zoom = Math.max(zoomState.scale, 1);
+                const scale = limitScale(fitScale * zoom * dpr, unscaled.width, unscaled.height);
+                const displayW = unscaled.width * fitScale;
+                const displayH = unscaled.height * fitScale;
 
-                presentationCanvas.width = viewport.width;
-                presentationCanvas.height = viewport.height;
-                presentationCanvas.style.width = `${viewport.width / dpr}px`;
-                presentationCanvas.style.height = `${viewport.height / dpr}px`;
+                if (refine) {
+                    if (!presentationRenderTask && !needsRerender(scale, presentationRenderedScale)) return;
+                    renderId = ++presentationRenderId;
+                }
+                if (presentationRenderTask) presentationRenderTask.cancel();
 
-                presentationRenderTask = page.render({canvasContext: ctx, viewport});
-                await presentationRenderTask.promise;
+                const job = startRender(page, scale);
+                presentationRenderTask = job.task;
+                try {
+                    await job.task.promise;
+                } finally {
+                    if (presentationRenderTask === job.task) presentationRenderTask = null;
+                }
+                if (renderId !== presentationRenderId) return;
+
+                commitBuffer(presentationCanvas, job.buffer, displayW, displayH);
+                presentationRenderedScale = scale;
+
+                if (refine) return;
                 document.getElementById('fs-current-page').textContent = pageNum;
-                await renderLinkOverlay(page, presentationCanvas, presentationLinkOverlay, viewport, true);
+                await renderLinkOverlay(page, presentationCanvas, presentationLinkOverlay, job.viewport, true);
             } catch (_) {}
         }
 
