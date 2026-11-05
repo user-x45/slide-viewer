@@ -1884,6 +1884,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>発表者ツール</title>
 <style>
 *{box-sizing:border-box}
@@ -1911,8 +1912,27 @@ button:hover{background:#475569}
 #p-laser{background:#334155}
 #p-laser.on{background:#b45309}
 #p-cur-box.laser{cursor:crosshair}
-#p-exit{margin-top:auto;background:#7f1d1d}
+#p-actions{margin-top:auto;display:flex;flex-direction:column;gap:12px}
+#p-close{display:none}
+#p-exit{background:#7f1d1d}
 #p-exit:hover{background:#991b1b}
+@media (max-width:760px),(orientation:portrait){
+#p-root{flex-direction:column;gap:8px;padding:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+#p-main{flex:1 1 0;min-height:0;gap:4px}
+#p-side{width:100%;max-width:none;min-width:0;flex:none;gap:6px}
+.p-label{font-size:11px}
+#p-next-box{height:22vh}
+#p-info{flex-direction:row;flex-wrap:wrap;gap:6px}
+.p-stat{flex:1 1 auto;padding:6px 8px;gap:6px}
+.p-stat span{display:none}
+.p-stat strong{font-size:16px}
+#p-controls button{padding:16px 8px;font-size:18px}
+#p-actions{margin-top:0;flex-direction:row;gap:8px}
+#p-actions button{flex:1;padding:10px 6px;font-size:13px}
+}
+@media (pointer:coarse){
+#p-laser{display:none}
+}
 </style>
 </head>
 <body>
@@ -1930,8 +1950,11 @@ button:hover{background:#475569}
       <div class="p-stat"><span>ページ</span><strong id="p-page"></strong></div>
     </div>
     <div id="p-controls"><button id="p-prev">◀ 前へ</button><button id="p-next">次へ ▶</button></div>
-    <button id="p-laser">レーザー ポインタ: オフ</button>
-    <button id="p-exit">スライドショーを終了</button>
+    <div id="p-actions">
+      <button id="p-laser">レーザー ポインタ: オフ</button>
+      <button id="p-close">発表者ツールを閉じる</button>
+      <button id="p-exit">スライドショーを終了</button>
+    </div>
   </div>
 </div>
 </body>
@@ -1940,6 +1963,7 @@ button:hover{background:#475569}
         const presenter = {
             win: null,
             timer: null,
+            frame: null,
             resizeTimer: null,
             startedAt: 0,
             accumulated: 0,
@@ -1958,7 +1982,7 @@ button:hover{background:#475569}
         }
 
         function presenterAlive() {
-            return !!(presenter.win && !presenter.win.closed);
+            return !!(presenter.win && !presenter.win.closed && (!presenter.frame || presenter.frame.isConnected));
         }
 
         function updatePresenterLabel() {
@@ -2114,6 +2138,28 @@ button:hover{background:#475569}
             });
             curBox.addEventListener('mouseleave', () => setRemoteLaser(null));
 
+            let swipeX = 0;
+            let swipeY = 0;
+            curBox.addEventListener('touchstart', e => {
+                if (e.touches.length !== 1) return;
+                swipeX = e.touches[0].clientX;
+                swipeY = e.touches[0].clientY;
+            }, { passive: true });
+            curBox.addEventListener('touchend', e => {
+                const t = e.changedTouches[0];
+                const dx = t.clientX - swipeX;
+                const dy = t.clientY - swipeY;
+                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+                    changePage(state.currentPage + (dx < 0 ? 1 : -1));
+                }
+            }, { passive: true });
+
+            if (win.frameElement) {
+                const closeBtn = q('p-close');
+                closeBtn.style.display = 'block';
+                closeBtn.addEventListener('click', () => closePresenter());
+            }
+
             d.addEventListener('keydown', e => {
                 if (['ArrowRight', 'ArrowDown', ' ', 'Enter', 'PageDown'].includes(e.key)) {
                     e.preventDefault();
@@ -2137,11 +2183,28 @@ button:hover{background:#475569}
             renderPresenter();
             updatePresenterLabel();
             syncPresenterLaser();
+            setTimeout(renderPresenter, 200);
+        }
+
+        function useInlinePresenter() {
+            return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 640;
         }
 
         function openPresenterWindow(targetScreen) {
             if (presenterAlive()) {
                 presenter.win.focus();
+                return true;
+            }
+            if (useInlinePresenter()) {
+                const frame = document.createElement('iframe');
+                frame.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;z-index:40;background:#0b1120;';
+                presentationContainer.appendChild(frame);
+                const fd = frame.contentDocument;
+                fd.open();
+                fd.write(PRESENTER_HTML);
+                fd.close();
+                presenter.frame = frame;
+                setupPresenter(frame.contentWindow);
                 return true;
             }
             let features = 'popup=yes,width=1280,height=800';
@@ -2166,11 +2229,15 @@ button:hover{background:#475569}
             clearTimeout(presenter.resizeTimer);
             presenter.timer = null;
             const win = presenter.win;
+            const frame = presenter.frame;
             presenter.win = null;
+            presenter.frame = null;
             presenter.cur = null;
             presenter.next = null;
             presenter.els = null;
-            if (win && !win.closed) {
+            if (frame) {
+                frame.remove();
+            } else if (win && !win.closed) {
                 try { win.close(); } catch (_) {}
             }
             updatePresenterLabel();
@@ -2184,7 +2251,7 @@ button:hover{background:#475569}
                 closeMenu();
                 return;
             }
-            if (isSingleMonitor() && state.isFullscreen) {
+            if (!useInlinePresenter() && isSingleMonitor() && state.isFullscreen) {
                 exitFullscreenOnly();
             }
             if (openPresenterWindow(pickPresenterScreen())) {
@@ -2215,7 +2282,7 @@ button:hover{background:#475569}
             } else {
                 laserToggle.classList.remove('hidden');
             }
-            presenterToggle.classList.toggle('hidden', isTouchDevice);
+            presenterToggle.classList.remove('hidden');
             updatePresenterLabel();
             presentationContainer.classList.remove('hidden');
             isInitialRender = true;
