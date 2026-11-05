@@ -1008,7 +1008,7 @@
             e.preventDefault();
         });
         document.addEventListener('mousemove', e => {
-            if (zoomState.isPanning && state.isFullscreen) {
+            if (zoomState.isPanning && state.isPresentationMode) {
                 zoomState.offsetX = zoomState.panStartOffsetX + (e.clientX - zoomState.panStartX);
                 zoomState.offsetY = zoomState.panStartOffsetY + (e.clientY - zoomState.panStartY);
                 applyZoomTransform();
@@ -1928,6 +1928,10 @@ button:hover{background:#475569}
             presenterText.textContent = presenterAlive() ? '発表者ツールを閉じる' : '発表者ツールを開く';
         }
 
+        function isSingleMonitor() {
+            return screenList.length <= 1;
+        }
+
         function pickPresenterScreen() {
             if (!screenList.length) return null;
             return screenList.find(s => s !== presentationScreen) || screenList[0];
@@ -2125,6 +2129,9 @@ button:hover{background:#475569}
                 closeMenu();
                 return;
             }
+            if (isSingleMonitor() && state.isFullscreen) {
+                exitFullscreenOnly();
+            }
             if (openPresenterWindow(pickPresenterScreen())) {
                 closeMenu();
             } else {
@@ -2139,8 +2146,10 @@ button:hover{background:#475569}
 
             presentationScreen = options.screen || null;
 
+            const windowedWithPresenter = !!options.presenter && isSingleMonitor();
+
             state.isPresentationMode = true;
-            state.isFullscreen = true;
+            state.isFullscreen = !windowedWithPresenter;
             state.laserPointerEnabled = false;
             laserCanvas.style.display = 'none';
             laserText.textContent = 'レーザー ポインタをオンにする';
@@ -2164,7 +2173,7 @@ button:hover{background:#475569}
                 renderPresentationPage(state.currentPage);
                 isInitialRender = false;
             };
-            if (!fsFn) {
+            if (!fsFn || windowedWithPresenter) {
                 renderWithoutFullscreen();
             } else {
                 const fsOptions = presentationScreen ? { screen: presentationScreen } : undefined;
