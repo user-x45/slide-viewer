@@ -209,10 +209,15 @@
                     <span id="current-page-num">1</span>&nbsp;/&nbsp;<span id="total-pages-num">--</span>&nbsp;ページ
                 </span>
 
-                <button id="btn-slideshow" class="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                    <i class="fa-solid fa-play text-xs sm:text-sm"></i>
-                    <span class="hidden sm:inline">スライドショー</span>
-                </button>
+                <div class="flex items-stretch rounded-lg shadow-sm">
+                    <button id="btn-slideshow" class="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-xs sm:text-sm rounded-l-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                        <i class="fa-solid fa-play text-xs sm:text-sm"></i>
+                        <span class="hidden sm:inline">スライドショー</span>
+                    </button>
+                    <button id="btn-slideshow-options" class="flex items-center px-2 sm:px-2.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm rounded-r-lg border-l border-indigo-400/60 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" title="スライドショーの設定" aria-label="スライドショーの設定">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -1147,7 +1152,10 @@
             handleUrl(pdfParam);
         }
 
-        btnSlideshow.addEventListener('click', openSlideshowDialog);
+        btnSlideshow.addEventListener('click', () => {
+            if (state.pdfDoc) startSlideshow(slideshowOptions);
+        });
+        document.getElementById('btn-slideshow-options').addEventListener('click', openSlideshowDialog);
 
         const btnPrevPage = document.getElementById('btn-prev-page');
         const btnNextPage = document.getElementById('btn-next-page');
@@ -1759,6 +1767,7 @@
         let screenDetailsObj = null;
         let screenList = [];
         let presentationScreen = null;
+        const slideshowOptions = { screen: null, presenter: false, configured: false };
 
         const slideshowModal = document.getElementById('slideshow-modal');
         const slideshowScreenList = document.getElementById('slideshow-screen-list');
@@ -1798,7 +1807,8 @@
             }
             slideshowScreenNote.classList.add('hidden');
             const current = screenDetailsObj.currentScreen;
-            const defaultIndex = Math.max(0, screenList.findIndex(s => s !== current));
+            const savedIndex = slideshowOptions.configured ? screenList.indexOf(slideshowOptions.screen) : -1;
+            const defaultIndex = savedIndex >= 0 ? savedIndex : Math.max(0, screenList.findIndex(s => s !== current));
             screenList.forEach((s, i) => {
                 const row = document.createElement('label');
                 row.className = 'flex items-center gap-3 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm transition-colors';
@@ -1830,7 +1840,7 @@
                 row.appendChild(text);
                 slideshowScreenList.appendChild(row);
             });
-            slideshowPresenterCheck.checked = screenList.length > 1;
+            slideshowPresenterCheck.checked = slideshowOptions.configured ? slideshowOptions.presenter : screenList.length > 1;
         }
 
         async function openSlideshowDialog() {
@@ -1852,6 +1862,9 @@
             const screen = checked ? (screenList[Number(checked.value)] || null) : null;
             const presenter = slideshowPresenterCheck.checked;
             slideshowModal.classList.add('hidden');
+            slideshowOptions.screen = screen;
+            slideshowOptions.presenter = presenter;
+            slideshowOptions.configured = true;
             startSlideshow({ screen, presenter });
         });
 
