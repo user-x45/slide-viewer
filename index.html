@@ -590,6 +590,17 @@
             }
         }
 
+        function setRemoteLaser(nx, ny) {
+            if (!state.isPresentationMode || !state.laserPointerEnabled) return;
+            if (nx === null) {
+                clearLaserPointer();
+                return;
+            }
+            const surface = isPptxDoc() ? presentationPptxHost : presentationCanvas;
+            const rect = surface.getBoundingClientRect();
+            drawLaserPointer(rect.left + nx * rect.width, rect.top + ny * rect.height);
+        }
+
         function toggleLaserPointer() {
             state.laserPointerEnabled = !state.laserPointerEnabled;
 
@@ -605,6 +616,7 @@
                 laserText.textContent = 'レーザー ポインタをオンにする';
                 laserToggle.classList.remove('text-amber-400');
             }
+            syncPresenterLaser();
         }
 
         function pauseLaser() {
@@ -1896,6 +1908,9 @@ button:hover{background:#475569}
 #p-controls{display:flex;gap:8px}
 #p-controls button{flex:1;padding:14px;font-size:16px;font-weight:700;background:#4f46e5}
 #p-controls button:hover{background:#6366f1}
+#p-laser{background:#334155}
+#p-laser.on{background:#b45309}
+#p-cur-box.laser{cursor:crosshair}
 #p-exit{margin-top:auto;background:#7f1d1d}
 #p-exit:hover{background:#991b1b}
 </style>
@@ -1915,6 +1930,7 @@ button:hover{background:#475569}
       <div class="p-stat"><span>ページ</span><strong id="p-page"></strong></div>
     </div>
     <div id="p-controls"><button id="p-prev">◀ 前へ</button><button id="p-next">次へ ▶</button></div>
+    <button id="p-laser">レーザー ポインタ: オフ</button>
     <button id="p-exit">スライドショーを終了</button>
   </div>
 </div>
@@ -1932,6 +1948,14 @@ button:hover{background:#475569}
             next: null,
             els: null
         };
+
+        function syncPresenterLaser() {
+            if (!presenter.win || presenter.win.closed || !presenter.els) return;
+            const on = state.laserPointerEnabled;
+            presenter.els.laser.textContent = on ? 'レーザー ポインタ: オン' : 'レーザー ポインタ: オフ';
+            presenter.els.laser.classList.toggle('on', on);
+            presenter.cur.box.classList.toggle('laser', on);
+        }
 
         function presenterAlive() {
             return !!(presenter.win && !presenter.win.closed);
@@ -2062,7 +2086,7 @@ button:hover{background:#475569}
             presenter.win = win;
             presenter.cur = { box: q('p-cur-box'), canvas: q('p-cur-canvas'), host: q('p-cur-host'), empty: null, task: null, token: 0 };
             presenter.next = { box: q('p-next-box'), canvas: q('p-next-canvas'), host: q('p-next-host'), empty: q('p-next-end'), task: null, token: 0 };
-            presenter.els = { elapsed: q('p-elapsed'), clock: q('p-clock'), page: q('p-page'), toggle: q('p-timer-toggle') };
+            presenter.els = { elapsed: q('p-elapsed'), clock: q('p-clock'), page: q('p-page'), toggle: q('p-timer-toggle'), laser: q('p-laser') };
             presenter.accumulated = 0;
             presenter.startedAt = Date.now();
             presenter.running = true;
@@ -2072,6 +2096,23 @@ button:hover{background:#475569}
             q('p-exit').addEventListener('click', () => exitSlideshow());
             q('p-timer-toggle').addEventListener('click', toggleTimer);
             q('p-timer-reset').addEventListener('click', resetTimer);
+            q('p-laser').addEventListener('click', () => toggleLaserPointer());
+
+            const curBox = presenter.cur.box;
+            curBox.addEventListener('mousemove', e => {
+                if (!state.laserPointerEnabled) return;
+                const visible = presenter.cur.canvas.style.display === 'none' ? presenter.cur.host : presenter.cur.canvas;
+                const rect = visible.getBoundingClientRect();
+                if (rect.width < 1 || rect.height < 1) return;
+                const nx = (e.clientX - rect.left) / rect.width;
+                const ny = (e.clientY - rect.top) / rect.height;
+                if (nx < 0 || nx > 1 || ny < 0 || ny > 1) {
+                    setRemoteLaser(null);
+                    return;
+                }
+                setRemoteLaser(nx, ny);
+            });
+            curBox.addEventListener('mouseleave', () => setRemoteLaser(null));
 
             d.addEventListener('keydown', e => {
                 if (['ArrowRight', 'ArrowDown', ' ', 'Enter', 'PageDown'].includes(e.key)) {
@@ -2095,6 +2136,7 @@ button:hover{background:#475569}
             tickPresenter();
             renderPresenter();
             updatePresenterLabel();
+            syncPresenterLaser();
         }
 
         function openPresenterWindow(targetScreen) {
