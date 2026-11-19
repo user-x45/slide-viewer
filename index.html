@@ -1759,7 +1759,7 @@
             if (ext === 'pptx') {
                 doc = await loadPptxDocument(buffer, (r, detail) => report(r, detail || formatBytes(buffer.byteLength)));
             } else {
-                const task = pdfjsLib.getDocument(new Uint8Array(buffer));
+                const task = pdfjsLib.getDocument({ data: new Uint8Array(buffer) });
                 task.onProgress = (p) => {
                     if (p && p.total) report(Math.min(p.loaded / p.total, 1) * 0.9, formatBytes(buffer.byteLength));
                 };
