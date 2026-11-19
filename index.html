@@ -1764,6 +1764,7 @@
                     if (p && p.total) report(Math.min(p.loaded / p.total, 1) * 0.9, formatBytes(buffer.byteLength));
                 };
                 doc = await task.promise;
+                doc.destroy = () => task.destroy();
                 report(1, '');
             }
             if (!doc.numPages) throw new Error('empty document');
