@@ -446,8 +446,7 @@
         let presentationRenderId = 0;
 
         const PROXY_ENDPOINT = 'https://pdf-slide-viewer-proxy.user-x45.workers.dev/';
-        const PPTX_BASE_WIDTH = 1280;
-        const PPTX_LIB_URL = 'https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js';
+        const PPTX_LIB_URL = 'https://cdn.jsdelivr.net/npm/pptx-vanilla-viewer@3.61.1/+esm';
         const JSZIP_URL = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
         let pptxLibPromise = null;
         let jszipPromise = null;
@@ -726,14 +725,10 @@
         }
 
         function loadPptxLib() {
-            if (window.pptxPreview) return Promise.resolve(window.pptxPreview);
             if (!pptxLibPromise) {
-                pptxLibPromise = new Promise((resolve, reject) => {
-                    const el = document.createElement('script');
-                    el.src = PPTX_LIB_URL;
-                    el.onload = () => window.pptxPreview ? resolve(window.pptxPreview) : reject(new Error('pptx library unavailable'));
-                    el.onerror = () => { pptxLibPromise = null; reject(new Error('pptx library failed to load')); };
-                    document.head.appendChild(el);
+                pptxLibPromise = import(PPTX_LIB_URL).catch(err => {
+                    pptxLibPromise = null;
+                    throw err;
                 });
             }
             return pptxLibPromise;
@@ -744,45 +739,57 @@
             const lib = await loadPptxLib();
             report(0.25, 'スライドを解析中...');
             const linksPromise = extractPptxLinks(buffer.slice(0));
-            const stage = document.createElement('div');
-            stage.style.cssText = 'position:fixed;left:-99999px;top:0;width:0;height:0;overflow:hidden;';
-            document.body.appendChild(stage);
-            try {
-                const previewer = lib.init(stage, {
-                    width: PPTX_BASE_WIDTH,
-                    height: Math.round(PPTX_BASE_WIDTH * 9 / 16),
-                    mode: 'list'
-                });
-                await previewer.load(buffer);
-                report(0.75, 'リンク情報を抽出中...');
-                const port = previewer.htmlRender.renderPort;
-                const links = await linksPromise;
-                report(1, '');
-                return {
-                    isPptx: true,
-                    links,
-                    numPages: previewer.slideCount,
-                    baseW: port.width,
-                    baseH: port.height,
-                    renderSlide(host, index, displayW, displayH) {
-                        host.innerHTML = '';
-                        host.style.width = `${displayW}px`;
-                        host.style.height = `${displayH}px`;
-                        const holder = document.createElement('div');
-                        holder.style.cssText = `position:relative;overflow:hidden;transform-origin:0 0;width:${port.width}px;height:${port.height}px;transform:scale(${displayW / port.width});`;
-                        host.appendChild(holder);
-                        previewer.htmlRender.wrapper = holder;
-                        previewer.htmlRender.renderSlide(index);
-                    },
-                    destroy() {
-                        try { previewer.destroy(); } catch (_) {}
-                        stage.remove();
-                    }
-                };
-            } catch (err) {
-                stage.remove();
-                throw err;
-            }
+            const loaded = await lib.loadPresentation(buffer.slice(0));
+            report(0.75, 'リンク情報を抽出中...');
+            const links = await linksPromise;
+            const registry = lib.createDefaultRegistry();
+            const translator = lib.createTranslator('en');
+            const css = lib.getViewerCss();
+            const styleEl = document.createElement('style');
+            styleEl.textContent = css;
+            document.head.appendChild(styleEl);
+            const canvasSize = loaded.canvasSize;
+            report(1, '');
+            return {
+                isPptx: true,
+                links,
+                css,
+                numPages: loaded.slides.length,
+                baseW: canvasSize.width,
+                baseH: canvasSize.height,
+                renderSlide(host, index, displayW, displayH) {
+                    const ownerDoc = host.ownerDocument;
+                    host.innerHTML = '';
+                    host.style.width = `${displayW}px`;
+                    host.style.height = `${displayH}px`;
+                    const holder = ownerDoc.createElement('div');
+                    holder.className = 'pptxv';
+                    holder.style.cssText = `display:block;position:relative;overflow:hidden;width:${displayW}px;height:${displayH}px;`;
+                    host.appendChild(holder);
+                    holder.appendChild(lib.renderSlideStage({
+                        document: ownerDoc,
+                        slide: loaded.slides[index],
+                        canvasSize,
+                        mediaDataUrls: loaded.mediaDataUrls,
+                        colorScheme: loaded.colorScheme,
+                        fontScheme: loaded.fontScheme,
+                        formatScheme: loaded.formatScheme,
+                        tableStyleMap: loaded.tableStyleMap,
+                        registry,
+                        t: translator,
+                        scale: displayW / canvasSize.width,
+                        reading: true,
+                        exposeElementIds: false,
+                        slides: loaded.slides,
+                        currentSlideIndex: index
+                    }));
+                },
+                destroy() {
+                    try { loaded.handler.dispose(); } catch (_) {}
+                    try { lib.revokeBlobUrls(loaded.blobUrls); } catch (_) {}
+                    styleEl.remove();
+                }
+            };
         }
 
         function isPptxDoc() {
@@ -2456,6 +2463,11 @@ button:hover{background:#475569}
         function setupPresenter(win) {
             const d = win.document;
             const q = id => d.getElementById(id);
+            if (isPptxDoc()) {
+                const presenterStyle = d.createElement('style');
+                presenterStyle.textContent = state.pdfDoc.css;
+                d.head.appendChild(presenterStyle);
+            }
             presenter.win = win;
             presenter.cur = { box: q('p-cur-box'), canvas: q('p-cur-canvas'), host: q('p-cur-host'), empty: null, task: null, token: 0 };
             presenter.next = { box: q('p-next-box'), canvas: q('p-next-canvas'), host: q('p-next-host'), empty: q('p-next-end'), task: null, token: 0 };
