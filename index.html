@@ -189,6 +189,40 @@
             <i class="fa-solid fa-shield-halved mr-1"></i>
             PDF・PPTXファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません。
         </p>
+
+        <section class="w-full mt-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
+            <div class="px-5 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                <i class="fa-solid fa-bell text-indigo-500"></i>
+                <h2 class="text-sm font-bold text-slate-900 dark:text-white">最新情報</h2>
+            </div>
+            <div class="p-5 space-y-6">
+                <article>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <time datetime="2026-11-19" class="text-xs text-slate-400 dark:text-slate-500">2026.11.19</time>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">PPTX表示エンジンを刷新</span>
+                    </div>
+                    <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">PowerPointの表示エンジンを pptx-vanilla-viewer に変更しました。これにより、次のような点が良くなります。</p>
+                    <ul class="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>スライドをHTML/CSSで描画するため、拡大しても文字がくっきり表示されます。</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>グラフはSVGで描画され、SmartArt・表・図形など幅広い要素に対応しています。</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>テーマ・スライドマスター・レイアウトの継承やEMF/WMF画像にも対応し、PowerPointの見た目を再現しやすくなりました。</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>埋め込み動画・音声に対応しています（再生できる形式はブラウザに依存します）。</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>開発が活発で更新が頻繁なため、今後の改善や不具合修正を取り込みやすくなります。</span></li>
+                    </ul>
+                </article>
+                <article>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <time datetime="2026-11-19" class="text-xs text-slate-400 dark:text-slate-500">2026.11.19</time>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">ライブラリを更新</span>
+                    </div>
+                    <ul class="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>PDFの描画エンジン pdf.js を 6.5.438 に更新</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>PPTXのリンク抽出に使う JSZip を 3.10.2 に更新</span></li>
+                        <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check text-emerald-500 mt-1 text-xs"></i><span>アイコンに使う Font Awesome を 7.3.1 に更新</span></li>
+                    </ul>
+                </article>
+            </div>
+        </section>
         </div>
     </div>
 
