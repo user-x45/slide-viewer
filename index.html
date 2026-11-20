@@ -315,6 +315,14 @@
         @keyframes rot { to { transform: rotate(360deg); } }
         .load-track { height: 4px; width: 100%; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.18); }
         .load-fill { height: 100%; width: 0; border-radius: 4px; background: #ff6b4a; transition: width .15s; }
+        .safe-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+        .safe-grid > * { min-width: 0; }
+        @media (min-width: 900px) { .safe-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        .safe-card { background: var(--surface); border: 1px solid var(--line); border-radius: 1.25rem; padding: 1.2rem 1.4rem; }
+        .safe-card i { color: var(--accent); font-size: 1.1rem; margin-bottom: .6rem; display: block; }
+        .safe-card h3 { font-weight: 700; font-size: .95rem; margin-bottom: .35rem; }
+        .safe-card p { font-size: .8rem; color: var(--muted); line-height: 1.7; overflow-wrap: anywhere; }
+        .safe-more { margin-top: 1.25rem; }
     </style>
 </head>
 <body class="flex flex-col overflow-hidden" style="height:100dvh;">
@@ -344,6 +352,7 @@
                 </div>
                 <div style="display:flex;gap:.25rem;border-bottom:1px solid var(--line);">
                     <button type="button" data-tab="about" class="info-tab">このアプリについて</button>
+                    <button type="button" data-tab="security" class="info-tab">安全性</button>
                     <button type="button" data-tab="license" class="info-tab">ライセンス</button>
                 </div>
             </div>
@@ -371,6 +380,38 @@
                             <dt>Ctrl + ホイール</dt><dd>拡大・縮小</dd>
                         </dl>
                     </div>
+                </div>
+
+                <div id="info-panel-security" class="hidden" style="display:grid;gap:1rem;">
+                    <p>このアプリを安心して使っていただくために、「何が守られているか」と「使うときに気をつけてほしいこと」をまとめました。</p>
+
+                    <div class="box">
+                        <p class="box-title"><i class="fa-solid fa-laptop" style="color:var(--accent);margin-right:.4rem;"></i>パソコン・スマホから選んだファイル</p>
+                        <p class="muted" style="font-size:.75rem;">「ファイルを選択」やドラッグ＆ドロップで開いたPDF・PPTXは、お使いのブラウザの中だけで表示されます。インターネット上のサーバーには送られないので、手元のファイルを見るぶんには安心です。</p>
+                    </div>
+
+                    <div class="box">
+                        <p class="box-title"><i class="fa-solid fa-link" style="color:var(--accent);margin-right:.4rem;"></i>URLから読み込むとき</p>
+                        <p class="muted" style="font-size:.75rem;">URLを入力して読み込む場合は、ファイルを取ってくるために「中継サーバー」を通ります。そのため、<strong>他人に見られたくない資料は、URLではなく手元のファイルとして開いてください。</strong>また、ログインしないと見られないページのファイルは読み込めません。</p>
+                    </div>
+
+                    <div>
+                        <p class="box-title" style="margin-bottom:.6rem;">使うときの注意</p>
+                        <ul class="ticks">
+                            <li><i class="fa-solid fa-circle-check"></i><span><strong>知らない人から届いたファイルは開かない。</strong>PDFやPPTXに、怪しいサイトへのリンクが仕込まれていることがあります。</span></li>
+                            <li><i class="fa-solid fa-circle-check"></i><span><strong>スライド内のリンクは、クリックする前に行き先を確認する。</strong>リンクは新しいタブで開き、元の画面には影響しません。</span></li>
+                            <li><i class="fa-solid fa-circle-check"></i><span><strong>このアプリのアドレスに <code style="font-size:.75rem;padding:0 .3rem;border-radius:.3rem;background:var(--soft);">?url=</code> が付いたリンクにも注意。</strong>開くだけで、指定されたファイルの読み込みが自動で始まります。送り主が信頼できるか確認しましょう。</span></li>
+                            <li><i class="fa-solid fa-circle-check"></i><span><strong>共有パソコンでは、使い終わったらタブを閉じる。</strong>表示した資料が、次に使う人に見えてしまうのを防げます。</span></li>
+                            <li><i class="fa-solid fa-circle-check"></i><span><strong>ブラウザは常に最新版にしておく。</strong>ブラウザの安全機能が、最新のほうがしっかり働きます。</span></li>
+                        </ul>
+                    </div>
+
+                    <div class="box">
+                        <p class="box-title"><i class="fa-solid fa-globe" style="color:var(--accent);margin-right:.4rem;"></i>外部サービスの利用について</p>
+                        <p class="muted" style="font-size:.75rem;">画面のデザインやアイコン、文字（フォント）を表示するため、Tailwind CSS・Google Fonts・Font Awesome といった外部サービスからデータを読み込みます。あなたのファイルの中身がこれらに送られることはありませんが、一般的なWebサイトと同じく、アクセスしたことは相手側に伝わります。</p>
+                    </div>
+
+                    <p class="muted" style="font-size:.75rem;">アカウント登録やパスワードの入力は不要です。このアプリがパスワードや個人情報を求めることはありません。もし求められたら、偽物のページかもしれないので入力しないでください。</p>
                 </div>
 
                 <div id="info-panel-license" class="hidden" style="display:grid;gap:1.5rem;">
@@ -452,7 +493,31 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                         <input id="pdf-url-input" type="url" placeholder="PDF・PPTXのURLを入力..." />
                         <button id="btn-load-url" class="btn btn-ink"><i class="fa-solid fa-link"></i><span class="lbl">読み込む</span></button>
                     </div>
-                    <p class="privacy"><i class="fa-solid fa-shield-halved"></i><span>PDF・PPTXファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません。</span></p>
+                    <p class="privacy"><i class="fa-solid fa-shield-halved"></i><span>PDF・PPTXファイルはすべてブラウザ上で処理され、サーバーにアップロードされることはありません（URL読み込みを除く）。<button type="button" data-info-tab="security" class="info-open link-btn" style="display:inline;text-decoration:underline;">安全性について</button></span></p>
+                </div>
+            </section>
+
+            <section class="news">
+                <h2 class="news-title"><i class="fa-solid fa-shield-halved"></i>安全に使うために</h2>
+                <div class="safe-grid">
+                    <div class="safe-card">
+                        <i class="fa-solid fa-laptop"></i>
+                        <h3>手元のファイルは外に出ません</h3>
+                        <p>選んだPDF・PPTXは、お使いのブラウザの中だけで表示されます。</p>
+                    </div>
+                    <div class="safe-card">
+                        <i class="fa-solid fa-link"></i>
+                        <h3>URL読み込みは中継サーバー経由</h3>
+                        <p>URLで開くときだけ、ファイル取得のために中継サーバーを通ります。見られたくない資料は手元のファイルで開きましょう。</p>
+                    </div>
+                    <div class="safe-card">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <h3>知らないファイルやリンクに注意</h3>
+                        <p>送り主が分からないファイルは開かず、スライド内のリンクは行き先を確認してからクリックしましょう。</p>
+                    </div>
+                </div>
+                <div class="safe-more">
+                    <button type="button" data-info-tab="security" class="btn btn-ghost info-open"><i class="fa-solid fa-circle-info"></i>安全性を詳しく見る</button>
                 </div>
             </section>
 
@@ -504,6 +569,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 <span>© 2026 PDF Slide Viewer</span>
                 <div class="foot-links">
                     <button type="button" data-info-tab="about" class="info-open link-btn"><i class="fa-solid fa-circle-info"></i><span>このアプリについて</span></button>
+                    <button type="button" data-info-tab="security" class="info-open link-btn"><i class="fa-solid fa-shield-halved"></i><span>安全性について</span></button>
                     <button type="button" data-info-tab="license" class="info-open link-btn"><i class="fa-brands fa-osi"></i><span>オープンソースライセンス</span></button>
                 </div>
             </footer>
@@ -1752,7 +1818,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         const infoModal = document.getElementById('info-modal');
         const infoTabs = document.querySelectorAll('.info-tab');
         const infoScroll = document.getElementById('info-scroll');
-        const infoPanels = { about: document.getElementById('info-panel-about'), license: document.getElementById('info-panel-license') };
+        const infoPanels = { about: document.getElementById('info-panel-about'), security: document.getElementById('info-panel-security'), license: document.getElementById('info-panel-license') };
 
         function showInfoTab(name) {
             infoTabs.forEach(tab => {
