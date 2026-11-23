@@ -319,6 +319,12 @@
         .fs-item i { width: 1rem; text-align: center; }
         .link-overlay-container { position: absolute; top: 0; left: 0; pointer-events: none; }
         .link-overlay-container a { position: absolute; pointer-events: auto; cursor: pointer; }
+        .link-overlay-container a.media-hit { display: flex; align-items: center; justify-content: center; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        .media-hit video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: none; pointer-events: none; }
+        .media-hit.has-video video { display: block; }
+        .media-hit .media-btn { position: relative; width: var(--s, 44px); height: var(--s, 44px); border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; display: flex; align-items: center; justify-content: center; font-size: calc(var(--s, 44px) * .4); box-shadow: 0 1px 6px rgba(0,0,0,.4); transition: opacity .2s; pointer-events: none; }
+        .media-hit.video.is-playing .media-btn { opacity: 0; }
+        .media-hit.video.is-playing:hover .media-btn { opacity: 1; }
 
         .loading { position: fixed; inset: 0; z-index: 110; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(18,17,16,.7); backdrop-filter: blur(6px); color: #f1ede4; }
         .spinner { width: 3rem; height: 3rem; margin-bottom: 1.25rem; border-radius: 50%; border: 3px solid rgba(255,255,255,.2); border-top-color: #ff6b4a; animation: rot .8s linear infinite; }
@@ -903,6 +909,87 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             return { x, y, cx, cy };
         }
 
+        const NS_P14 = 'http://schemas.microsoft.com/office/powerpoint/2010/main';
+        const MEDIA_MIME = {
+            mp4: 'video/mp4', m4v: 'video/mp4', mov: 'video/quicktime', webm: 'video/webm', ogv: 'video/ogg',
+            mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', aac: 'audio/aac', flac: 'audio/flac'
+        };
+
+        function collectSlideMedia(slideDoc, rels, slideDir) {
+            const items = [];
+            const walk = (container, groups) => {
+                for (const el of container.children) {
+                    if (el.namespaceURI !== NS_P) continue;
+                    if (el.localName === 'grpSp') {
+                        const g = shapeXfrm(el);
+                        walk(el, g ? groups.concat([g]) : groups);
+                        continue;
+                    }
+                    if (el.localName !== 'pic') continue;
+                    const nvPr = el.getElementsByTagNameNS(NS_P, 'nvPr')[0];
+                    if (!nvPr) continue;
+                    const audio = childNS(nvPr, NS_A, 'audioFile');
+                    const video = childNS(nvPr, NS_A, 'videoFile');
+                    const node = audio || video;
+                    if (!node) continue;
+                    const kind = audio ? 'audio' : 'video';
+                    const linkRid = node.getAttributeNS(NS_R, 'link');
+                    const embed = nvPr.getElementsByTagNameNS(NS_P14, 'media')[0];
+                    const embedRid = embed ? embed.getAttributeNS(NS_R, 'embed') : null;
+                    let rel = embedRid ? rels[embedRid] : null;
+                    if (!rel || rel.mode === 'External') rel = linkRid ? rels[linkRid] : null;
+                    if (!rel || rel.mode === 'External') continue;
+                    const raw = shapeXfrm(el);
+                    if (!raw) continue;
+                    items.push({ kind, path: resolveZipPath(slideDir, rel.target), box: mapThroughGroups(raw, groups) });
+                }
+            };
+            const tree = slideDoc.getElementsByTagNameNS(NS_P, 'spTree')[0];
+            if (tree) walk(tree, []);
+            return items;
+        }
+
+        function releasePptxMedia(data) {
+            if (!data || !data.media) return;
+            for (const list of data.media) {
+                for (const m of list) {
+                    if (m.el) {
+                        try { m.el.pause(); m.el.removeAttribute('src'); m.el.load(); } catch (_) {}
+                        m.el = null;
+                    }
+                }
+            }
+            for (const u of data.blobUrls || []) {
+                try { URL.revokeObjectURL(u); } catch (_) {}
+            }
+        }
+
+        function stopPptxMedia(data, exceptIndex) {
+            if (!data || !data.media) return;
+            data.media.forEach((list, i) => {
+                if (i === exceptIndex) return;
+                for (const m of list) {
+                    m.playing = false;
+                    m.started = false;
+                    if (m.el) {
+                        try { m.el.pause(); m.el.currentTime = 0; } catch (_) {}
+                    }
+                }
+            });
+        }
+
+        function updateMediaUi(m) {
+            const a = m.anchor;
+            if (!a) return;
+            a.classList.toggle('is-playing', !!m.playing);
+            a.classList.toggle('has-video', m.kind === 'video' && !!m.started);
+            const icon = a.querySelector('i');
+            if (icon) {
+                icon.className = m.failed ? 'fa-solid fa-triangle-exclamation' : (m.playing ? 'fa-solid fa-pause' : 'fa-solid fa-play');
+            }
+            a.title = m.failed ? 'この形式はブラウザで再生できません' : '';
+        }
+
         function describeLink(hl, rels, slidePaths, slideDir) {
             const action = hl.getAttribute('action') || '';
             const rid = hl.getAttributeNS(NS_R, 'id');
@@ -985,17 +1072,44 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     slidePaths.push(rel ? resolveZipPath('ppt', rel.target) : null);
                 }
                 const slides = [];
+                let media = [];
                 for (const path of slidePaths) {
-                    if (!path) { slides.push([]); continue; }
+                    if (!path) { slides.push([]); media.push([]); continue; }
                     const xml = await readText(path);
-                    if (!xml) { slides.push([]); continue; }
+                    if (!xml) { slides.push([]); media.push([]); continue; }
                     const dir = path.substring(0, path.lastIndexOf('/'));
                     const file = path.substring(path.lastIndexOf('/') + 1);
                     const rels = parseRels(await readText(`${dir}/_rels/${file}.rels`));
                     const slideDoc = new DOMParser().parseFromString(xml, 'application/xml');
                     slides.push(collectSlideLinks(slideDoc, rels, slidePaths, dir));
+                    media.push(collectSlideMedia(slideDoc, rels, dir));
                 }
-                return { slideW, slideH, slides };
+                const blobUrls = [];
+                try {
+                    const urls = new Map();
+                    for (const list of media) {
+                        for (const m of list) {
+                            if (!urls.has(m.path)) {
+                                const f = zip.file(m.path);
+                                if (!f) {
+                                    urls.set(m.path, null);
+                                } else {
+                                    const ext = m.path.split('.').pop().toLowerCase();
+                                    const data = await f.async('arraybuffer');
+                                    const type = MEDIA_MIME[ext] || (m.kind === 'video' ? 'video/mp4' : 'audio/mpeg');
+                                    const url = URL.createObjectURL(new Blob([data], { type }));
+                                    urls.set(m.path, url);
+                                    blobUrls.push(url);
+                                }
+                            }
+                            m.url = urls.get(m.path);
+                        }
+                    }
+                    media = media.map(list => list.filter(m => m.url));
+                } catch (_) {
+                    media = slides.map(() => []);
+                }
+                return { slideW, slideH, slides, media, blobUrls };
             } catch (_) {
                 return null;
             }
@@ -1004,7 +1118,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         function renderPptxLinkOverlay(doc, index, host, overlayEl, isPresentationMode) {
             overlayEl.innerHTML = '';
             const data = doc.links;
-            if (!data || !data.slides[index] || !data.slides[index].length) return;
+            if (!data) return;
+            stopPptxMedia(data, index);
+            const slideLinks = data.slides[index] || [];
+            const slideMedia = (data.media && data.media[index]) || [];
+            if (!slideLinks.length && !slideMedia.length) return;
             const displayW = parseFloat(host.style.width);
             const displayH = parseFloat(host.style.height);
             if (!displayW || !displayH) return;
@@ -1016,7 +1134,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             const usedSpans = new Set();
             const spans = Array.from(host.querySelectorAll('span, a')).filter(n => n.children.length === 0 && n.textContent);
 
-            for (const link of data.slides[index]) {
+            for (const link of slideLinks) {
                 let left = link.box.x * sx;
                 let top = link.box.y * sy;
                 let width = link.box.cx * sx;
@@ -1082,6 +1200,80 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 }
                 overlayEl.appendChild(a);
             }
+
+            for (const m of slideMedia) {
+                const a = document.createElement('a');
+                a.href = '#';
+                a.className = 'media-hit ' + m.kind;
+                a.setAttribute('role', 'button');
+                a.setAttribute('aria-label', m.kind === 'video' ? '動画を再生' : '音声を再生');
+                const w = Math.max(m.box.cx * sx, 1);
+                const h = Math.max(m.box.cy * sy, 1);
+                a.style.left = (m.box.x * sx) + 'px';
+                a.style.top = (m.box.y * sy) + 'px';
+                a.style.width = w + 'px';
+                a.style.height = h + 'px';
+                a.style.setProperty('--s', Math.max(28, Math.min(56, Math.min(w, h) * 0.6)) + 'px');
+
+                if (!m.el) {
+                    m.el = document.createElement(m.kind);
+                    m.el.preload = 'metadata';
+                    if (m.kind === 'video') {
+                        m.el.playsInline = true;
+                        m.el.setAttribute('playsinline', '');
+                    }
+                    m.el.src = m.url;
+                    m.el.addEventListener('ended', () => {
+                        m.playing = false;
+                        m.started = false;
+                        try { m.el.currentTime = 0; } catch (_) {}
+                        updateMediaUi(m);
+                    });
+                    m.el.addEventListener('error', () => {
+                        m.failed = true;
+                        m.playing = false;
+                        m.started = false;
+                        updateMediaUi(m);
+                    });
+                }
+
+                if (m.kind === 'video') a.appendChild(m.el);
+                const btn = document.createElement('span');
+                btn.className = 'media-btn';
+                btn.appendChild(document.createElement('i'));
+                a.appendChild(btn);
+                m.anchor = a;
+                updateMediaUi(m);
+
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (m.failed) return;
+                    if (m.playing) {
+                        m.playing = false;
+                        m.el.pause();
+                    } else {
+                        m.playing = true;
+                        m.started = true;
+                        const p = m.el.play();
+                        if (p && p.catch) {
+                            p.catch(() => {
+                                m.playing = false;
+                                m.started = false;
+                                if (m.el.error) m.failed = true;
+                                updateMediaUi(m);
+                            });
+                        }
+                    }
+                    updateMediaUi(m);
+                });
+                overlayEl.appendChild(a);
+
+                if (m.playing && m.kind === 'video') {
+                    const p = m.el.play();
+                    if (p && p.catch) p.catch(() => {});
+                }
+            }
         }
 
         function loadPptxLib() {
@@ -1145,6 +1337,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     }));
                 },
                 destroy() {
+                    releasePptxMedia(links);
                     try { loaded.handler.dispose(); } catch (_) {}
                     try { lib.revokeBlobUrls(loaded.blobUrls); } catch (_) {}
                     styleEl.remove();
