@@ -268,6 +268,11 @@
             padding: .4rem .8rem; border-radius: 999px; background: rgba(20,19,15,.78); color: #fff; font-size: .72rem;
             backdrop-filter: blur(6px); pointer-events: none; opacity: 0; transition: opacity .3s;
         }
+        .notes { display: flex; flex-direction: column; flex-shrink: 0; height: 9.5rem; background: var(--surface); border-top: 1px solid var(--line); }
+        .notes-head { display: flex; align-items: center; gap: .5rem; padding: .45rem 1rem; border-bottom: 1px solid var(--line); font-size: .7rem; font-weight: 700; letter-spacing: .12em; color: var(--muted); }
+        .notes-body { flex: 1; min-height: 0; overflow-y: auto; padding: .75rem 1rem; font-size: .9rem; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+        .notes-body.empty { color: var(--muted); }
+        .icon-btn.on { color: var(--accent); background: var(--soft); }
         .mnav {
             display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-shrink: 0;
             padding: .7rem 1rem calc(.7rem + env(safe-area-inset-bottom, 0px)); background: var(--bg); border-top: 1px solid var(--line);
@@ -286,6 +291,9 @@
             .lbl { display: inline; }
             .bar-sub { display: block; }
             .mnav { display: none; }
+            .notes { height: 11rem; }
+            .notes-head { padding: .5rem 1.5rem; }
+            .notes-body { padding: .9rem 1.5rem; }
             .bar { padding: .75rem 1.5rem; }
         }
 
@@ -602,6 +610,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 </div>
             </div>
             <div class="bar-right">
+                <button id="btn-notes-toggle" class="icon-btn hidden" title="ノートを表示/非表示" aria-label="ノートを表示/非表示" aria-pressed="false"><i class="fa-regular fa-note-sticky" style="font-size:1.05rem;"></i></button>
                 <span class="pager"><span id="current-page-num">1</span><span style="color:var(--muted);">/</span><span id="total-pages-num">--</span></span>
                 <div class="seg">
                     <button id="btn-slideshow" class="btn btn-accent seg-main"><i class="fa-solid fa-play" style="font-size:.7rem;"></i><span class="lbl">スライドショー</span></button>
@@ -633,6 +642,11 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                         <span class="lbl" style="opacity:.6;">· ダブルクリックでリセット</span>
                     </div>
                 </main>
+
+                <section id="notes-panel" class="notes hidden" aria-label="スライドのノート">
+                    <div class="notes-head"><i class="fa-regular fa-note-sticky"></i><span>ノート</span></div>
+                    <div id="notes-body" class="notes-body custom-scrollbar"></div>
+                </section>
 
                 <div class="mnav">
                     <button id="btn-prev-page" class="nav-btn" aria-label="前へ"><i class="fa-solid fa-chevron-left"></i></button>
@@ -732,7 +746,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             isPresentationMode: false,
             renderedThumbnails: new Set(),
             laserPointerEnabled: false,
-            exitingFullscreenForLink: false
+            exitingFullscreenForLink: false,
+            notesOpen: window.innerWidth >= 640
         };
 
         const uploadScreen = document.getElementById('upload-screen');
@@ -752,6 +767,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         const mainViewContainer = document.getElementById('main-view-container');
         const presentationCanvas = document.getElementById('presentation-canvas');
         const mainPptxHost = document.getElementById('main-pptx-host');
+        const notesPanel = document.getElementById('notes-panel');
+        const notesBody = document.getElementById('notes-body');
+        const btnNotesToggle = document.getElementById('btn-notes-toggle');
         const presentationPptxHost = document.getElementById('presentation-pptx-host');
         const laserCanvas = document.getElementById('laser-canvas');
         const mainLinkOverlay = document.getElementById('main-link-overlay');
@@ -1049,6 +1067,30 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             return links;
         }
 
+        function readNotesText(notesDoc) {
+            const lines = [];
+            for (const sp of notesDoc.getElementsByTagNameNS(NS_P, 'sp')) {
+                const ph = sp.getElementsByTagNameNS(NS_P, 'ph')[0];
+                if (!ph || ph.getAttribute('type') !== 'body') continue;
+                const body = sp.getElementsByTagNameNS(NS_P, 'txBody')[0];
+                if (!body) continue;
+                for (const p of body.getElementsByTagNameNS(NS_A, 'p')) {
+                    let line = '';
+                    for (const node of p.children) {
+                        if (node.namespaceURI !== NS_A) continue;
+                        if (node.localName === 'r' || node.localName === 'fld') {
+                            const t = childNS(node, NS_A, 't');
+                            if (t) line += t.textContent;
+                        } else if (node.localName === 'br') {
+                            line += '\n';
+                        }
+                    }
+                    lines.push(line);
+                }
+            }
+            return lines.join('\n').replace(/\s+$/, '');
+        }
+
         async function extractPptxLinks(buffer) {
             try {
                 const JSZip = await loadJsZip();
@@ -1072,17 +1114,27 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                     slidePaths.push(rel ? resolveZipPath('ppt', rel.target) : null);
                 }
                 const slides = [];
+                const notes = [];
                 let media = [];
                 for (const path of slidePaths) {
-                    if (!path) { slides.push([]); media.push([]); continue; }
+                    if (!path) { slides.push([]); media.push([]); notes.push(''); continue; }
                     const xml = await readText(path);
-                    if (!xml) { slides.push([]); media.push([]); continue; }
+                    if (!xml) { slides.push([]); media.push([]); notes.push(''); continue; }
                     const dir = path.substring(0, path.lastIndexOf('/'));
                     const file = path.substring(path.lastIndexOf('/') + 1);
                     const rels = parseRels(await readText(`${dir}/_rels/${file}.rels`));
                     const slideDoc = new DOMParser().parseFromString(xml, 'application/xml');
                     slides.push(collectSlideLinks(slideDoc, rels, slidePaths, dir));
                     media.push(collectSlideMedia(slideDoc, rels, dir));
+                    let noteText = '';
+                    try {
+                        const noteRel = Object.values(rels).find(r => /\/notesSlide$/.test(r.type));
+                        if (noteRel) {
+                            const noteXml = await readText(resolveZipPath(dir, noteRel.target));
+                            if (noteXml) noteText = readNotesText(new DOMParser().parseFromString(noteXml, 'application/xml'));
+                        }
+                    } catch (_) {}
+                    notes.push(noteText);
                 }
                 const blobUrls = [];
                 try {
@@ -1109,7 +1161,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
                 } catch (_) {
                     media = slides.map(() => []);
                 }
-                return { slideW, slideH, slides, media, blobUrls };
+                return { slideW, slideH, slides, media, blobUrls, notes };
             } catch (_) {
                 return null;
             }
@@ -1305,6 +1357,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             return {
                 isPptx: true,
                 links,
+                notes: links && links.notes ? links.notes : [],
                 css,
                 numPages: loaded.slides.length,
                 baseW: canvasSize.width,
@@ -1348,6 +1401,37 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
         function isPptxDoc() {
             return !!(state.pdfDoc && state.pdfDoc.isPptx);
         }
+
+        function docHasNotes() {
+            const doc = state.pdfDoc;
+            return !!(doc && doc.notes && doc.notes.some(Boolean));
+        }
+
+        function getNotesText(pageNum) {
+            const doc = state.pdfDoc;
+            return doc && doc.notes ? (doc.notes[pageNum - 1] || '') : '';
+        }
+
+        function updateNotes(pageNum) {
+            const text = getNotesText(pageNum);
+            notesBody.textContent = text || 'このスライドにはノートがありません';
+            notesBody.classList.toggle('empty', !text);
+            notesBody.scrollTop = 0;
+        }
+
+        function syncNotesUI() {
+            const has = docHasNotes();
+            btnNotesToggle.classList.toggle('hidden', !has);
+            btnNotesToggle.classList.toggle('on', has && state.notesOpen);
+            btnNotesToggle.setAttribute('aria-pressed', String(has && state.notesOpen));
+            notesPanel.classList.toggle('hidden', !has || !state.notesOpen);
+        }
+
+        btnNotesToggle.addEventListener('click', () => {
+            state.notesOpen = !state.notesOpen;
+            syncNotesUI();
+            if (state.pdfDoc) renderMainPage(state.currentPage);
+        });
 
         function limitScale(scale, w, h) {
             let s = scale;
@@ -2372,6 +2456,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             uploadScreen.classList.add('hidden');
             errorScreen.classList.add('hidden');
             viewerScreen.classList.remove('hidden');
+            syncNotesUI();
             initViewer();
         }
 
@@ -2478,6 +2563,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             uploadScreen.classList.remove('hidden');
 
             document.getElementById('thumbnail-list').innerHTML = '';
+            syncNotesUI();
+            notesBody.textContent = '';
             mainPptxHost.innerHTML = '';
             mainPptxHost.style.display = 'none';
             presentationPptxHost.innerHTML = '';
@@ -2592,6 +2679,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
             } catch (_) {}
             currentPageNum.textContent = pageNum;
             updateThumbnailActiveState(pageNum);
+            updateNotes(pageNum);
         }
 
         async function renderMainPage(pageNum, refine = false) {
@@ -2883,6 +2971,11 @@ button:hover{background:#4a463e}
 #p-actions{margin-top:auto;display:flex;flex-direction:column;gap:12px}
 #p-exit{background:#7f1d1d}
 #p-exit:hover{background:#991b1b}
+#p-notes-wrap{display:none;flex:none;flex-direction:column;gap:8px;height:30vh;min-height:120px}
+#p-notes-head{display:flex;align-items:center;justify-content:space-between}
+#p-notes-size{display:flex;gap:6px}
+#p-notes{flex:1;min-height:0;overflow-y:auto;background:#201f1b;border-radius:8px;padding:12px 16px;font-size:18px;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+#p-notes.empty{color:#94a3b8}
 </style>
 </head>
 <body>
@@ -2890,6 +2983,10 @@ button:hover{background:#4a463e}
   <div id="p-main">
     <div class="p-label"><i class="fa-solid fa-chalkboard-user"></i> 現在のスライド</div>
     <div id="p-cur-box" class="p-box"><canvas id="p-cur-canvas"></canvas><div id="p-cur-host" class="p-host"></div></div>
+    <div id="p-notes-wrap">
+      <div id="p-notes-head"><div class="p-label"><i class="fa-regular fa-note-sticky"></i> ノート</div><div id="p-notes-size"><button id="p-notes-minus" class="p-small">A−</button><button id="p-notes-plus" class="p-small">A＋</button></div></div>
+      <div id="p-notes"></div>
+    </div>
   </div>
   <div id="p-side">
     <div class="p-label">次のスライド</div>
@@ -2916,10 +3013,17 @@ button:hover{background:#4a463e}
             startedAt: 0,
             accumulated: 0,
             running: true,
+            noteSize: 18,
+            notesPage: 0,
             cur: null,
             next: null,
             els: null
         };
+
+        function applyPresenterNoteSize() {
+            if (!presenter.els || !presenter.els.notes) return;
+            presenter.els.notes.style.fontSize = `${presenter.noteSize}px`;
+        }
 
         function syncPresenterLaser() {
             if (!presenter.win || presenter.win.closed || !presenter.els) return;
@@ -3051,6 +3155,13 @@ button:hover{background:#4a463e}
             renderPresenterSlot(presenter.cur, n);
             renderPresenterSlot(presenter.next, n + 1);
             presenter.els.page.textContent = `${n} / ${state.totalPages}`;
+            if (presenter.notesPage !== n) {
+                presenter.notesPage = n;
+                const noteText = getNotesText(n);
+                presenter.els.notes.textContent = noteText || 'このスライドにはノートがありません';
+                presenter.els.notes.classList.toggle('empty', !noteText);
+                presenter.els.notes.scrollTop = 0;
+            }
         }
 
         function setupPresenter(win) {
@@ -3064,7 +3175,20 @@ button:hover{background:#4a463e}
             presenter.win = win;
             presenter.cur = { box: q('p-cur-box'), canvas: q('p-cur-canvas'), host: q('p-cur-host'), empty: null, task: null, token: 0 };
             presenter.next = { box: q('p-next-box'), canvas: q('p-next-canvas'), host: q('p-next-host'), empty: q('p-next-end'), task: null, token: 0 };
-            presenter.els = { elapsed: q('p-elapsed'), clock: q('p-clock'), page: q('p-page'), toggle: q('p-timer-toggle'), laser: q('p-laser') };
+            presenter.els = { elapsed: q('p-elapsed'), clock: q('p-clock'), page: q('p-page'), toggle: q('p-timer-toggle'), laser: q('p-laser'), notes: q('p-notes'), notesWrap: q('p-notes-wrap') };
+            presenter.notesPage = 0;
+            presenter.els.notesWrap.style.display = docHasNotes() ? 'flex' : 'none';
+            applyPresenterNoteSize();
+            q('p-notes-minus').addEventListener('click', e => {
+                presenter.noteSize = Math.max(12, presenter.noteSize - 2);
+                applyPresenterNoteSize();
+                e.currentTarget.blur();
+            });
+            q('p-notes-plus').addEventListener('click', e => {
+                presenter.noteSize = Math.min(48, presenter.noteSize + 2);
+                applyPresenterNoteSize();
+                e.currentTarget.blur();
+            });
             presenter.accumulated = 0;
             presenter.startedAt = Date.now();
             presenter.running = true;
